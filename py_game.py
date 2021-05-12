@@ -53,7 +53,6 @@ class Field:
                 s += 1
         print(self.ships)
 
-
     def make_four_deck_ship(self, x, y, turn):
         if turn == 0:
             if x == 1:
@@ -115,7 +114,6 @@ class Field:
                 neighbours.append(n)
             self.disable_cells(x, y, self.cells_around(x, y))
             self.ships[(x, y)] = (False, neighbours)
-
 
     def draw_ship(self, ship, turn):
         ship.sort(key=lambda i: i[1])
@@ -189,7 +187,8 @@ def missed(x, y, player):
         x1 = x - 0.5 + 15
     else:
         x1 = x - 0.5
-    pygame.draw.circle(screen, BLACK, (cell_size * x1 + left_margin, cell_size * (y - 0.5) + top_margin), cell_size // 6)
+    pygame.draw.circle(screen, BLACK, (cell_size * x1 + left_margin, cell_size * (y - 0.5) + top_margin),
+                       cell_size // 6)
 
 
 def wounded(x, y, player, ships):
@@ -247,7 +246,7 @@ def draw_field():
     player2_label = font.render('Игрок 2', True, BLACK)
     width_1 = player1_label.get_width()
     width_2 = player2_label.get_width()
-    screen.blit(player1_label, (left_margin + 5 * cell_size - width_1 // 2, 
+    screen.blit(player1_label, (left_margin + 5 * cell_size - width_1 // 2,
                                 top_margin - cell_size // 2 - font_size - 10))
     screen.blit(player2_label, (left_margin + 20 * cell_size - width_2 // 2,
                                 top_margin - cell_size // 2 - font_size - 10))
@@ -304,30 +303,40 @@ def draw_field():
             # Ver num grid2
 
 
-def check_for_winner(score1, score2):
-    if score1 == 20:
-        print('1 поюедил')
-    if score2 == 20:
+def check_for_winner(scores):
+    if scores[1] == 20:
+        print('1 победил')
+    if scores[2] == 20:
         print('2 победил')
+
+
+players = {1: Field(1),
+           2: Field(2)}
+
+scores = {2: 0,
+          1: 0}
+
+offsets = {1: 0,
+           2: 15}
+
 
 def main():
     game_over = False
-    player1_turn = True
-    player2_turn = False
+
     screen.fill(WHITE)
 
     draw_field()
 
-    player1 = Field(1)
-    player2 = Field(2)
+    players[1].generate_ships()
+    players[2].generate_ships()
 
-    player1.generate_ships()
-    player2.generate_ships()
-
-    score1 = 0
-    score2 = 0
-
+    enemy_num = 2
+    score_num = 1
     pygame.display.update()
+
+    def change_turn():
+        nonlocal score_num, enemy_num
+        score_num, enemy_num = enemy_num, score_num
 
     while not game_over:
         for event in pygame.event.get():
@@ -335,37 +344,24 @@ def main():
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if player1_turn:
-                    if left_margin + 15 * cell_size <= x <= left_margin + 25 \
-                            * cell_size and top_margin <= y <= top_margin + \
-                            10 * cell_size:
-                        fired_cell = ((x - left_margin) // cell_size + 1 - 15,
-                                      (y - top_margin) // cell_size + 1)
-                        if fired_cell in player2.ships and player2.ships[fired_cell][0] is False:
-                            score1 += 1
-                            wounded(fired_cell[0], fired_cell[1], 2, player2.ships)
-                            if is_killed(fired_cell[0], fired_cell[1], player2.ships):
-                                killed(fired_cell[0], fired_cell[1], 2, player2.ships)
-                        elif fired_cell not in player2.ships:
-                            missed(fired_cell[0], fired_cell[1], 2)
-                            player1_turn = False
-                            player2_turn = True
-                if player2_turn:
-                    if left_margin <= x <= left_margin + 10 * cell_size and \
-                            top_margin <= y <= top_margin + 10 * cell_size:
-                        fired_cell = ((x - left_margin) // cell_size + 1,
-                                      (y - top_margin) // cell_size + 1)
-                        print(fired_cell)
-                        if fired_cell in player1.ships and player1.ships[fired_cell][0] is False:
-                            score2 += 1
-                            wounded(fired_cell[0], fired_cell[1], 1, player1.ships)
-                            if is_killed(fired_cell[0], fired_cell[1], player1.ships):
-                                killed(fired_cell[0], fired_cell[1], 1, player1.ships)
-                        elif fired_cell not in player1.ships:
-                            missed(fired_cell[0], fired_cell[1], 1)
-                            player2_turn = False
-                            player1_turn = True
-                check_for_winner(score1, score2)
+                offset = offsets[enemy_num]
+                enemy = players[enemy_num]
+                score = scores[score_num]
+                if left_margin + offset * cell_size <= x <= left_margin + (10 + offset) \
+                        * cell_size and top_margin <= y <= top_margin + \
+                        10 * cell_size:
+                    fired_cell = ((x - left_margin) // cell_size + 1 - offset,
+                                  (y - top_margin) // cell_size + 1)
+                    if fired_cell in enemy.ships and enemy.ships[fired_cell][0] is False:
+                        score += 1
+                        wounded(fired_cell[0], fired_cell[1], enemy.player, enemy.ships)
+                        if is_killed(fired_cell[0], fired_cell[1], enemy.ships):
+                            killed(fired_cell[0], fired_cell[1], enemy.player, enemy.ships)
+                    elif fired_cell not in enemy.ships:
+                        missed(fired_cell[0], fired_cell[1], enemy.player)
+                        change_turn()
+
+                check_for_winner(scores)
 
         pygame.display.update()
 
