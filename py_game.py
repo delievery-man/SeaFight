@@ -183,12 +183,14 @@ class Field:
 
 
 def missed(x, y, player):
-    if player == 2:
+    if player.player == 2:
         x1 = x - 0.5 + 15
     else:
         x1 = x - 0.5
     pygame.draw.circle(screen, BLACK, (cell_size * x1 + left_margin, cell_size * (y - 0.5) + top_margin),
                        cell_size // 6)
+    player.cells_state[(x, y)] = False
+
 
 
 def wounded(x, y, player, ships):
@@ -310,17 +312,15 @@ def check_for_winner(scores):
         print('2 победил')
 
 
-players = {1: Field(1),
-           2: Field(2)}
-
-scores = {2: 0,
-          1: 0}
-
-offsets = {1: 0,
-           2: 15}
-
-
 def main():
+    players = {1: Field(1),
+               2: Field(2)}
+
+    scores = {2: 0,
+              1: 0}
+
+    offsets = {1: 0,
+               2: 15}
     game_over = False
 
     screen.fill(WHITE)
@@ -329,6 +329,9 @@ def main():
 
     players[1].generate_ships()
     players[2].generate_ships()
+
+    for player in players.values():
+        player.set_cells_state()
 
     enemy_num = 2
     score_num = 1
@@ -346,20 +349,21 @@ def main():
                 x, y = event.pos
                 offset = offsets[enemy_num]
                 enemy = players[enemy_num]
-                score = scores[score_num]
                 if left_margin + offset * cell_size <= x <= left_margin + (10 + offset) \
                         * cell_size and top_margin <= y <= top_margin + \
                         10 * cell_size:
                     fired_cell = ((x - left_margin) // cell_size + 1 - offset,
                                   (y - top_margin) // cell_size + 1)
                     if fired_cell in enemy.ships and enemy.ships[fired_cell][0] is False:
-                        score += 1
+                        scores[score_num] += 1
                         wounded(fired_cell[0], fired_cell[1], enemy.player, enemy.ships)
                         if is_killed(fired_cell[0], fired_cell[1], enemy.ships):
                             killed(fired_cell[0], fired_cell[1], enemy.player, enemy.ships)
                     elif fired_cell not in enemy.ships:
-                        missed(fired_cell[0], fired_cell[1], enemy.player)
-                        change_turn()
+
+                        if enemy.cells_state[fired_cell] is True:
+                            change_turn()
+                        missed(fired_cell[0], fired_cell[1], enemy)
 
                 check_for_winner(scores)
 
