@@ -13,12 +13,12 @@ cell_size = 30
 left_margin = 70
 top_margin = 90
 
-screen_size = (left_margin * 2 + cell_size * 20 + cell_size * 5,
-               top_margin * 2 + cell_size * 10)
+screen_width, screen_height = left_margin * 2 + cell_size * 25, top_margin * 2 + 40 + cell_size * 10
+btn_width, btn_height = 175, 45
 
 pygame.init()
 
-screen = pygame.display.set_mode(screen_size)
+screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption('Морской бой')
 
 font_size = int(cell_size / 1.5)
@@ -30,6 +30,7 @@ class Field:
         self.cells_state = dict()
         self.set_cells_state()
         self.player = player
+        self.ships_to_draw = []
         self.ships = dict()
 
     def set_cells_state(self):
@@ -57,11 +58,25 @@ class Field:
                 ship = [(x, y)]
             if self.is_ship_can_be_put(ship):
                 self.add_ship(ship)
-                self.draw_ship(ship, turn)
+                self.draw_ship(ship, turn, 7.5 * cell_size)
                 s += 1
 
     @staticmethod
-    def make_four_deck_ship(x, y, turn):
+    def draw_ship(ship, turn, offset):
+        ship.sort(key=lambda i: i[1])
+        x = cell_size * (ship[0][0] - 1) + left_margin + offset
+        y = cell_size * (ship[0][1] - 1) + top_margin
+        if turn == 1:
+            width = cell_size
+            height = cell_size * len(ship)
+
+        else:
+            width = cell_size * len(ship)
+            height = cell_size
+        pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
+                         width=cell_size // 10)
+
+    def make_four_deck_ship(self, x, y, turn):
         if turn == 0:
             if x == 1:
                 return [(1, y), (2, y), (3, y), (4, y)]
@@ -73,12 +88,11 @@ class Field:
             if y == 1:
                 return [(x, 1), (x, 2), (x, 3), (x, 4)]
             elif y == 10 or y == 9:
-                return [(x, 10), (x, 9), (x, 8), (x, 7)]
+                return [(x, 7), (x, 8), (x, 9), (x, 10)]
             else:
                 return [(x, y - 1), (x, y), (x, y + 1), (x, y + 2)]
 
-    @staticmethod
-    def make_three_deck_ship(x, y, turn):
+    def make_three_deck_ship(self, x, y, turn):
         if turn == 0:
             if x == 1:
                 return [(1, y), (2, y), (3, y)]
@@ -90,12 +104,11 @@ class Field:
             if y == 1:
                 return [(x, 1), (x, 2), (x, 3)]
             elif y == 10:
-                return [(x, 10), (x, 9), (x, 8)]
+                return [(x, 8), (x, 9), (x, 10)]
             else:
-                return [(x, y + 1), (x, y), (x, y - 1)]
+                return [(x, y - 1), (x, y), (x, y + 1)]
 
-    @staticmethod
-    def make_two_deck_ship(x, y, turn):
+    def make_two_deck_ship(self, x, y, turn):
         if turn == 0:
             if x == 10:
                 return [(x - 1, y), (x, y)]
@@ -103,7 +116,7 @@ class Field:
                 return [(x, y), (x + 1, y)]
         else:
             if y == 10:
-                return [(x, y), (x, y - 1)]
+                return [(x, y - 1), (x, y)]
             else:
                 return [(x, y), (x, y + 1)]
 
@@ -124,21 +137,6 @@ class Field:
                 neighbours.append(n)
             self.disable_cells(x, y, self.cells_around(x, y))
             self.ships[(x, y)] = (False, neighbours)
-
-    @staticmethod
-    def draw_ship(ship, turn):
-        ship.sort(key=lambda i: i[1])
-        x = cell_size * (ship[0][0] - 1) + left_margin
-        y = cell_size * (ship[0][1] - 1) + top_margin
-        if turn == 1:
-            width = cell_size
-            height = cell_size * len(ship)
-
-        else:
-            width = cell_size * len(ship)
-            height = cell_size
-        pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
-                         width=cell_size // 10)
 
     def disable_cells(self, x, y, directions):
         self.cells_state[(x, y)] = False
@@ -192,17 +190,15 @@ class Field:
 
 
 class Button:
-    def __init__(self, x_offset, button_title, drawer):
+    def __init__(self, x_start, y_start, button_title, drawer):
         self.title = button_title
         title_width, title_height = font.size(self.title)
-        self.button_width = title_width + cell_size
-        button_height = title_height + cell_size
-        x_start = x_offset
-        y_start = top_margin + 10 * cell_size + button_height
-        self.btn_params = x_start, y_start, self.button_width, button_height
+        self.button_width = 175
+        self.button_height = 45
+        self.btn_params = x_start, y_start, self.button_width, self.button_height
         self.rect = pygame.Rect(self.btn_params)
         self.title_params = x_start + self.button_width / 2 - title_width / 2, \
-                            y_start + button_height / 2 - title_height / 2
+                            y_start + self.button_height / 2 - title_height / 2
         self.drawer = drawer
 
     def change_color_on_hover(self):
@@ -212,29 +208,22 @@ class Button:
 
 
 class ShootingManager:
-    def __init__(self, player):
+    def __init__(self, player, drawer):
         self.player = player
         self.__offset = OFFSETS[player.player]
+        self.drawer = drawer
 
     def missed(self, fired_cell):
-        if self.player.player == 2:
-            x1 = fired_cell[0] - 0.5 + 15
-        else:
-            x1 = fired_cell[0] - 0.5
-        pygame.draw.circle(screen, BLACK,
-                           (cell_size * x1 + left_margin, cell_size * (fired_cell[1] - 0.5) + top_margin),
-                           cell_size // 6)
+        self.drawer.put_dots([(fired_cell[0], fired_cell[1])], self.__offset)
         self.player.cells_state[fired_cell] = False
 
     def wounded(self, fired_cell):
         x_c = fired_cell[0]
         y_c = fired_cell[1]
-        x_d = cell_size * (x_c - 1 + self.__offset) + left_margin
-        y_d = cell_size * (y_c - 1) + top_margin
-        pygame.draw.line(screen, BLACK, (x_d, y_d),
-                         (x_d + cell_size, y_d + cell_size), cell_size // 10)
-        pygame.draw.line(screen, BLACK, (x_d, y_d + cell_size),
-                         (x_d + cell_size, y_d), cell_size // 10)
+        self.drawer.put_cross(cell_size * (x_c - 1 + self.__offset) + left_margin,
+                         cell_size * (y_c - 1) + top_margin)
+        self.drawer.put_dots([(x_c + 1, y_c + 1), (x_c - 1, y_c - 1), (x_c + 1, y_c - 1),
+                         (x_c - 1, y_c + 1)], self.__offset)
         self.player.ships[(x_c, y_c)] = (True, self.player.ships[(x_c, y_c)][1])
 
     def is_killed(self, fired_cell):
@@ -251,30 +240,50 @@ class ShootingManager:
         return False
 
     def killed(self, fired_cell):
-        x_d = cell_size * (fired_cell[0] - 1 + self.__offset) + left_margin
-        y_d = cell_size * (fired_cell[1] - 1) + top_margin
-        pygame.draw.line(screen, RED, (x_d, y_d),
-                         (x_d + cell_size, y_d + cell_size), cell_size // 10)
-        pygame.draw.line(screen, RED, (x_d, y_d + cell_size),
-                         (x_d + cell_size, y_d), cell_size // 10)
-
-        for neighbour in self.player.ships[(fired_cell[0], fired_cell[1])][1]:
-            x_d = cell_size * (neighbour[0] - 1 + self.__offset) + left_margin
-            y_d = cell_size * (neighbour[1] - 1) + top_margin
-            pygame.draw.line(screen, RED, (x_d, y_d),
-                             (x_d + cell_size, y_d + cell_size),
-                             cell_size // 10)
-            pygame.draw.line(screen, RED, (x_d, y_d + cell_size),
-                             (x_d + cell_size, y_d), cell_size // 10)
+        x1 = fired_cell[0]
+        y1 = fired_cell[1]
+        self.drawer.put_cross(cell_size * (x1 - 1 + self.__offset) +
+                         left_margin, cell_size * (y1 - 1) +
+                         top_margin, RED)
+        neighbours = self.player.ships[(x1, y1)][1]
+        for neighbour in neighbours:
+            self.drawer.put_cross(cell_size * (neighbour[0] - 1 + self.__offset) +
+                             left_margin, cell_size * (neighbour[1] - 1) +
+                             top_margin, RED)
+        dots = []
+        ship = [n for n in neighbours]
+        ship.append((x1, y1))
+        if len(ship) > 1:
+            if ship[0][0] == ship[1][0]:
+                ship.sort(key=lambda i: i[1])
+                dots = [(ship[0][0], ship[0][1] - 1),
+                        (ship[0][0], ship[-1][1] + 1)]
+            elif ship[0][1] == ship[1][1]:
+                ship.sort(key=lambda i: i[0])
+                dots = [(ship[0][0] - 1, ship[0][1]),
+                        (ship[-1][0] + 1, ship[0][1])]
+        else:
+            dots = [(x1, y1 - 1), (x1 + 1, y1), (x1, y1 + 1), (x1 - 1, y1)]
+        self.drawer.put_dots(dots, self.__offset)
 
 
 class DrawManager:
 
     def __init__(self):
-        self.start_with_friend_btn = Button(left_margin, 'Играть с другом', self)
-        self.start_with_computer_btn = Button(left_margin + 200, 'Играть с компьютером', self)
-        self.random_btn = Button(left_margin + 11 * cell_size, 'Расставить рандомно', self)
-        self.next_btn = Button(left_margin + 11 * cell_size + self.random_btn.button_width + cell_size, 'Дальше', self)
+        self.start_with_friend_btn = Button((screen_width - btn_width * 2) / 3,
+                                            (screen_height - btn_height) / 2,
+                                            'Играть с другом',
+                                            self)
+        self.start_with_computer_btn = Button((screen_width - btn_width * 2) *
+                                              (2 / 3) + btn_width,
+                                              (screen_height - btn_height) / 2,
+                                              'Играть с компьютером', self)
+        self.random_btn = Button((screen_width - btn_width * 2 - 5) / 2,
+                                 top_margin + 10 * cell_size + btn_height,
+                                 'Расставить рандомно', self)
+        self.next_btn = Button((screen_width - btn_width * 2 - 5) / 2 +
+                               btn_width + 10, top_margin + 10 * cell_size +
+                               btn_height, 'Дальше', self)
 
     @staticmethod
     def draw_button(button, color=BLACK):
@@ -311,17 +320,17 @@ class DrawManager:
                                   cell_size, top_margin - num_height * 1.5))
 
     @staticmethod
-    def make_label(label, offset):
-        player_label = font.render(label, True, BLACK)
-        width = player_label.get_width()
-        screen.blit(player_label, (left_margin + (offset + 5) * cell_size -
-                                   width // 2, top_margin - cell_size // 2 -
-                                   font_size - 10))
+    def make_label(text, x_offset, y_offset=-cell_size, color=BLACK):
+        label = font.render(text, True, color)
+        label_width = label.get_width()
+        label_height = label.get_height()
+        screen.blit(label, (left_margin + x_offset * cell_size +
+                            (10 * cell_size - label_width) / 2, top_margin - label_height + y_offset))
 
     def draw_field_window(self, label):
         screen.fill(WHITE)
-        self.draw_field(0)
-        self.make_label(label, 0)
+        self.draw_field(7.5)
+        self.make_label(label, 7.5)
         self.draw_button(self.next_btn)
         self.draw_button(self.random_btn)
 
@@ -332,9 +341,60 @@ class DrawManager:
             self.draw_field(offset)
         self.make_label(player1, 0)
         self.make_label(player2, 15)
+        self.update_score(0, 0)
+        self.update_score(0, 15)
 
-        self.draw_button(self.start_with_friend_btn)
-        self.draw_button(self.start_with_computer_btn)
+    @staticmethod
+    def update_score(score, offset):
+        score_label = font.render('Очки: {0}'.format(score), True, BLACK)
+        score_label_width = score_label.get_width()
+        score_label_height = score_label.get_height()
+        x_start = left_margin + (
+                offset + 5) * cell_size - score_label_width // 2
+        y_start = top_margin + 10.5 * cell_size
+        background_rect = pygame.Rect(
+            x_start, y_start, score_label_width, score_label_height)
+        screen.fill(WHITE, background_rect)
+        screen.blit(score_label, (x_start, y_start))
+
+    @staticmethod
+    def draw_ships(ships, offset=0.0):
+        for ship in ships:
+            if len(ship) > 1:
+                if ship[0][1] == ship[1][1]:
+                    turn = 0
+                else:
+                    turn = 1
+            else:
+                turn = 1
+            if turn == 1:
+                width = cell_size
+                height = cell_size * len(ship)
+            else:
+                width = cell_size * len(ship)
+                height = cell_size
+            x = cell_size * (ship[0][0] - 1) + left_margin + offset
+            y = cell_size * (ship[0][1] - 1) + top_margin
+            pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
+                             width=cell_size // 10)
+
+    @staticmethod
+    def put_dots(dots, offset):
+        for (x, y) in dots:
+            if x < 1 or y < 1 or x > 10 or y > 10:
+                continue
+            x_d = x - 0.5 + offset
+            y_d = y
+            pygame.draw.circle(screen, BLACK, (cell_size * x_d + left_margin,
+                                               cell_size * (y_d - 0.5) +
+                                               top_margin), cell_size // 6)
+
+    @staticmethod
+    def put_cross(x_start, y_start, color=BLACK):
+        pygame.draw.line(screen, color, (x_start, y_start),
+                         (x_start + cell_size, y_start + cell_size), cell_size // 10)
+        pygame.draw.line(screen, color, (x_start, y_start + cell_size),
+                         (x_start + cell_size, y_start), cell_size // 10)
 
 
 def main():
@@ -356,9 +416,10 @@ def main():
     ships_created_1 = False
     screen.fill(WHITE)
     drawer = DrawManager()
-    drawer.draw_game_window("Игрок 1", "Игрок 2")
-    shootings = {1: ShootingManager(players[1]),
-                 2: ShootingManager(players[2])}
+    drawer.draw_button(drawer.start_with_friend_btn)
+    drawer.draw_button(drawer.start_with_computer_btn)
+    shootings = {1: ShootingManager(players[1], drawer),
+                 2: ShootingManager(players[2], drawer)}
 
     while not game_start:
         mouse = pygame.mouse.get_pos()
@@ -388,6 +449,7 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN \
                     and drawer.random_btn.rect.collidepoint(mouse):
                 players[1].generate_ships(drawer, 'Игрок 1')
+
                 ships_created_1 = True
         pygame.display.update()
 
@@ -403,21 +465,19 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN \
                     and drawer.random_btn.rect.collidepoint(mouse):
                 players[2].generate_ships(drawer, 'Игрок 2')
+
                 ships_created_2 = True
         pygame.display.update()
 
-    for player in players.values():
-        player.set_cells_state()
+    for p in players.values():
+        p.set_cells_state()
 
     def change_turn():
         nonlocal player_num, enemy_num
         player_num, enemy_num = enemy_num, player_num
 
-    def check_for_winner():
-        if scores[1] == 20:
-            print('1 победил')
-        if scores[2] == 20:
-            print('2 победил')
+    def is_winner(player):
+        return scores[player] == 20
 
     while not game_over:
         for event in pygame.event.get():
@@ -436,14 +496,17 @@ def main():
                             enemy.ships[fired_cell][0] is False:
                         scores[player_num] += 1
                         shootings[enemy_num].wounded(fired_cell)
+                        drawer.update_score(scores[player_num], offsets[player_num])
                         if shootings[enemy_num].is_killed(fired_cell):
                             shootings[enemy_num].killed(fired_cell)
+                        if is_winner(player_num):
+                            drawer.make_label(
+                                'Игрок {0} победил'.format(player_num), 7.5,
+                                12 * cell_size, RED)
                     elif fired_cell not in enemy.ships:
                         if enemy.cells_state[fired_cell] is True:
                             change_turn()
                         shootings[player_num].missed(fired_cell)
-
-                check_for_winner()
 
         pygame.display.update()
 
