@@ -213,46 +213,40 @@ class ShootingManager:
         self.__offset = OFFSETS[player.player]
         self.drawer = drawer
 
-    def missed(self, fired_cell):
-        self.drawer.put_dots([(fired_cell[0], fired_cell[1])], self.__offset)
-        self.player.cells_state[fired_cell] = False
+    def missed(self, x, y):
+        self.drawer.put_dots([(x, y)], self.__offset)
+        self.player.cells_state[(x, y)] = False
 
-    def wounded(self, fired_cell):
-        x_c = fired_cell[0]
-        y_c = fired_cell[1]
-        self.drawer.put_cross(cell_size * (x_c - 1 + self.__offset) + left_margin,
-                         cell_size * (y_c - 1) + top_margin)
-        self.drawer.put_dots([(x_c + 1, y_c + 1), (x_c - 1, y_c - 1), (x_c + 1, y_c - 1),
-                         (x_c - 1, y_c + 1)], self.__offset)
-        self.player.ships[(x_c, y_c)] = (True, self.player.ships[(x_c, y_c)][1])
+    def wounded(self, x, y):
+        self.drawer.put_cross(cell_size * (x - 1 + self.__offset) + left_margin,
+                         cell_size * (y - 1) + top_margin)
+        self.drawer.put_dots([(x + 1, y + 1), (x - 1, y - 1), (x + 1, y - 1),
+                         (x - 1, y + 1)], self.__offset)
+        self.player.ships[(x, y)] = (True, self.player.ships[(x, y)][1])
 
-    def is_killed(self, fired_cell):
-        x_c = fired_cell[0]
-        y_c = fired_cell[1]
-        killed_ship = [(x_c, y_c)]
-        for neighbour in self.player.ships[(x_c, y_c)][1]:
+    def is_killed(self, x, y):
+        killed_ship = [(x, y)]
+        for neighbour in self.player.ships[(x, y)][1]:
             n_x = neighbour[0]
             n_y = neighbour[1]
             if self.player.ships[(n_x, n_y)][0]:
                 killed_ship.append((n_x, n_y))
-        if len(killed_ship) == len(self.player.ships[(x_c, y_c)][1]) + 1:
+        if len(killed_ship) == len(self.player.ships[(x, y)][1]) + 1:
             return True
         return False
 
-    def killed(self, fired_cell):
-        x1 = fired_cell[0]
-        y1 = fired_cell[1]
-        self.drawer.put_cross(cell_size * (x1 - 1 + self.__offset) +
-                         left_margin, cell_size * (y1 - 1) +
+    def killed(self, x, y):
+        self.drawer.put_cross(cell_size * (x - 1 + self.__offset) +
+                         left_margin, cell_size * (y - 1) +
                          top_margin, RED)
-        neighbours = self.player.ships[(x1, y1)][1]
+        neighbours = self.player.ships[(x, y)][1]
         for neighbour in neighbours:
             self.drawer.put_cross(cell_size * (neighbour[0] - 1 + self.__offset) +
                              left_margin, cell_size * (neighbour[1] - 1) +
                              top_margin, RED)
         dots = []
         ship = [n for n in neighbours]
-        ship.append((x1, y1))
+        ship.append((x, y))
         if len(ship) > 1:
             if ship[0][0] == ship[1][0]:
                 ship.sort(key=lambda i: i[1])
@@ -263,7 +257,7 @@ class ShootingManager:
                 dots = [(ship[0][0] - 1, ship[0][1]),
                         (ship[-1][0] + 1, ship[0][1])]
         else:
-            dots = [(x1, y1 - 1), (x1 + 1, y1), (x1, y1 + 1), (x1 - 1, y1)]
+            dots = [(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)]
         self.drawer.put_dots(dots, self.__offset)
 
 
@@ -495,10 +489,10 @@ def main():
                     if fired_cell in enemy.ships and \
                             enemy.ships[fired_cell][0] is False:
                         scores[player_num] += 1
-                        shootings[enemy_num].wounded(fired_cell)
+                        shootings[enemy_num].wounded(fired_cell[0], fired_cell[1])
                         drawer.update_score(scores[player_num], offsets[player_num])
-                        if shootings[enemy_num].is_killed(fired_cell):
-                            shootings[enemy_num].killed(fired_cell)
+                        if shootings[enemy_num].is_killed(fired_cell[0], fired_cell[1]):
+                            shootings[enemy_num].killed(fired_cell[0], fired_cell[1])
                         if is_winner(player_num):
                             drawer.make_label(
                                 'Игрок {0} победил'.format(player_num), 7.5,
@@ -506,7 +500,7 @@ def main():
                     elif fired_cell not in enemy.ships:
                         if enemy.cells_state[fired_cell] is True:
                             change_turn()
-                        shootings[player_num].missed(fired_cell)
+                        shootings[player_num].missed(fired_cell[0], fired_cell[1])
 
         pygame.display.update()
 
