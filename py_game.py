@@ -326,19 +326,21 @@ def main():
                     and random_btn.rect.collidepoint(mouse):
                 players[2].generate_ships()
         pygame.display.update()
+    for player in players.values():
+        player.set_cells_state()
 
     def change_turn():
         nonlocal player_num, enemy_num
         player_num, enemy_num = enemy_num, player_num
 
-    def missed():
-        nonlocal offset, fired_cell
-        x_d = fired_cell[0] - 0.5 + offset
-        y_d = fired_cell[1]
-        pygame.draw.circle(screen, BLACK, (cell_size * x_d + left_margin,
-                                           cell_size * (
-                                                   y_d - 0.5) + top_margin),
+    def missed(x, y, player):
+        if player.player == 2:
+            x1 = x - 0.5 + 15
+        else:
+            x1 = x - 0.5
+        pygame.draw.circle(screen, BLACK, (cell_size * x1 + left_margin, cell_size * (y - 0.5) + top_margin),
                            cell_size // 6)
+        player.cells_state[(x, y)] = False
 
     def wounded(ships):
         nonlocal offset, fired_cell
@@ -410,9 +412,9 @@ def main():
                         if is_killed(enemy.ships):
                             killed(enemy.ships)
                     elif fired_cell not in enemy.ships:
-                        missed()
-                        # players[player_num].cells_state[(x_c, y_c)] = False
-                        change_turn()
+                        if enemy.cells_state[fired_cell] is True:
+                            change_turn()
+                        missed(fired_cell[0], fired_cell[1], enemy)
 
                 check_for_winner()
 
