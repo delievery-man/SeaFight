@@ -255,7 +255,8 @@ def main():
     game_start = False
     first_field_made = False
     second_field_made = False
-
+    ships_created_2 = False
+    ships_created_1 = False
     screen.fill(WHITE)
 
     start_with_friend_btn = Button(left_margin, 'Играть с другом')
@@ -305,12 +306,13 @@ def main():
                 second_field_made = True
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    next_btn.rect.collidepoint(mouse):
+                    next_btn.rect.collidepoint(mouse) and ships_created_1:
                 first_field_made = True
                 draw_field_window('Игрок 2')
             elif event.type == pygame.MOUSEBUTTONDOWN \
                     and random_btn.rect.collidepoint(mouse):
                 players[1].generate_ships()
+                ships_created_1 = True
         pygame.display.update()
 
     while not second_field_made:
@@ -319,12 +321,13 @@ def main():
             if event.type == pygame.QUIT:
                 second_field_made = True
                 game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and next_btn.rect.collidepoint(mouse):
+            elif event.type == pygame.MOUSEBUTTONDOWN and next_btn.rect.collidepoint(mouse) and ships_created_2:
                 second_field_made = True
                 draw_game_window('Игрок 1', 'Игрок 2')
             elif event.type == pygame.MOUSEBUTTONDOWN \
                     and random_btn.rect.collidepoint(mouse):
                 players[2].generate_ships()
+                ships_created_2 = True
         pygame.display.update()
     for player in players.values():
         player.set_cells_state()
