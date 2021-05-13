@@ -6,6 +6,9 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 GREEN = (0, 153, 153)
 
+OFFSETS = {1: 0,
+               2: 15}
+
 cell_size = 30
 left_margin = 70
 top_margin = 90
@@ -34,8 +37,12 @@ class Field:
             for y in range(1, 11):
                 self.cells_state[(x, y)] = True
 
-    def generate_ships(self):
+    def generate_ships(self, drawer, label):
         s = 0
+        self.ships = {}
+        self.set_cells_state()
+        drawer.draw_field_window(label)
+
         while s < 10:
             x = random.randint(1, 10)
             y = random.randint(1, 10)
@@ -181,7 +188,7 @@ class Field:
 
 
 class Button:
-    def __init__(self, x_offset, button_title):
+    def __init__(self, x_offset, button_title, drawer):
         self.title = button_title
         title_width, title_height = font.size(self.title)
         self.button_width = title_width + cell_size
@@ -190,54 +197,84 @@ class Button:
         y_start = top_margin + 10 * cell_size + button_height
         self.btn_params = x_start, y_start, self.button_width, button_height
         self.rect = pygame.Rect(self.btn_params)
-        self.title_params = x_start + self.button_width / 2 - title_width / 2,\
+        self.title_params = x_start + self.button_width / 2 - title_width / 2, \
                             y_start + button_height / 2 - title_height / 2
+        self.drawer = drawer
 
-    def draw_button(self, color=BLACK):
-        pygame.draw.rect(screen, color, self.btn_params)
-        screen.blit(font.render(self.title, True, WHITE), self.title_params)
 
     def change_color_on_hover(self):
         mouse = pygame.mouse.get_pos()
         if self.rect.collidepoint(mouse):
-            self.draw_button(GREEN)
+            self.drawer.draw_button(self, GREEN)
 
 
-def draw_field(offset):
-    letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
-    for i in range(11):
-        pygame.draw.line(screen, BLACK,
-                         (left_margin + offset * cell_size, top_margin + i *
-                          cell_size), (left_margin + (offset + 10) * cell_size,
-                                       top_margin + i * cell_size))
-        pygame.draw.line(screen, BLACK,
-                         (left_margin + (i + offset) * cell_size, top_margin),
-                         (left_margin + (i + offset) * cell_size,
-                          top_margin + 10 * cell_size))
+class DrawManager:
 
-        if i < 10:
-            num = font.render(str(i + 1), True, BLACK)
-            let = font.render(letters[i], True, BLACK)
+    def __init__(self):
+        self.start_with_friend_btn = Button(left_margin, 'Играть с другом', self)
+        self.start_with_computer_btn = Button(left_margin + 200, 'Играть с компьютером', self)
+        self.random_btn = Button(left_margin + 11 * cell_size, 'Расставить рандомно', self)
+        self.next_btn = Button(left_margin + 11 * cell_size + self.random_btn.button_width + cell_size, 'Дальше', self)
 
-            num_width = num.get_width()
-            num_height = num.get_height()
-            let_width = let.get_width()
+    @staticmethod
+    def draw_button(button, color=BLACK):
+        pygame.draw.rect(screen, color, button.btn_params)
+        screen.blit(font.render(button.title, True, WHITE), button.title_params)
 
-            screen.blit(num, (left_margin - (cell_size // 2 + num_width // 2) +
-                              offset * cell_size, top_margin + i * cell_size +
-                              (cell_size // 2 - num_height // 2)))
+    @staticmethod
+    def draw_field(offset):
+        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+        for i in range(11):
+            pygame.draw.line(screen, BLACK,
+                             (left_margin + offset * cell_size, top_margin + i *
+                              cell_size), (left_margin + (offset + 10) * cell_size,
+                                           top_margin + i * cell_size))
+            pygame.draw.line(screen, BLACK,
+                             (left_margin + (i + offset) * cell_size, top_margin),
+                             (left_margin + (i + offset) * cell_size,
+                              top_margin + 10 * cell_size))
 
-            screen.blit(let, (left_margin + i * cell_size +
-                              (cell_size // 2 - let_width // 2) + offset *
-                              cell_size, top_margin - num_height * 1.5))
+            if i < 10:
+                num = font.render(str(i + 1), True, BLACK)
+                let = font.render(letters[i], True, BLACK)
 
+                num_width = num.get_width()
+                num_height = num.get_height()
+                let_width = let.get_width()
 
-def make_label(label, offset):
-    player_label = font.render(label, True, BLACK)
-    width = player_label.get_width()
-    screen.blit(player_label, (left_margin + (offset + 5) * cell_size -
-                               width // 2, top_margin - cell_size // 2 -
-                               font_size - 10))
+                screen.blit(num, (left_margin - (cell_size // 2 + num_width // 2) +
+                                  offset * cell_size, top_margin + i * cell_size +
+                                  (cell_size // 2 - num_height // 2)))
+
+                screen.blit(let, (left_margin + i * cell_size +
+                                  (cell_size // 2 - let_width // 2) + offset *
+                                  cell_size, top_margin - num_height * 1.5))
+
+    @staticmethod
+    def make_label(label, offset):
+        player_label = font.render(label, True, BLACK)
+        width = player_label.get_width()
+        screen.blit(player_label, (left_margin + (offset + 5) * cell_size -
+                                   width // 2, top_margin - cell_size // 2 -
+                                   font_size - 10))
+
+    def draw_field_window(self, label):
+        screen.fill(WHITE)
+        self.draw_field(0)
+        self.make_label(label, 0)
+        self.draw_button(self.next_btn)
+        self.draw_button(self.random_btn)
+
+    def draw_game_window(self, player1, player2):
+        global OFFSETS
+        screen.fill(WHITE)
+        for offset in OFFSETS.values():
+            self.draw_field(offset)
+        self.make_label(player1, 0)
+        self.make_label(player2, 15)
+
+        self.draw_button(self.start_with_friend_btn)
+        self.draw_button(self.start_with_computer_btn)
 
 
 def main():
@@ -258,31 +295,10 @@ def main():
     ships_created_2 = False
     ships_created_1 = False
     screen.fill(WHITE)
+    drawer = DrawManager()
+    drawer.draw_game_window("Игрок 1", "Игрок 2")
 
-    start_with_friend_btn = Button(left_margin, 'Играть с другом')
-    start_with_friend_btn.draw_button()
 
-    start_with_computer_btn = Button(left_margin + 200, 'Играть с компьютером')
-    start_with_computer_btn.draw_button()
-
-    random_btn = Button(left_margin + 11 * cell_size, 'Расставить рандомно')
-    next_btn = Button(left_margin + 11 * cell_size + random_btn.button_width + cell_size, 'Дальше')
-
-    pygame.display.update()
-
-    def draw_field_window(label):
-        screen.fill(WHITE)
-        draw_field(0)
-        make_label(label, 0)
-        random_btn.draw_button()
-        next_btn.draw_button()
-
-    def draw_game_window(player1, player2):
-        screen.fill(WHITE)
-        for offset in offsets.values():
-            draw_field(offset)
-        make_label(player1, 0)
-        make_label(player2, 15)
 
     while not game_start:
         mouse = pygame.mouse.get_pos()
@@ -293,9 +309,9 @@ def main():
                 second_field_made = True
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    start_with_friend_btn.rect.collidepoint(mouse):
+                    drawer.start_with_friend_btn.rect.collidepoint(mouse):
                 game_start = True
-                draw_field_window('Игрок 1')
+                drawer.draw_field_window('Игрок 1')
         pygame.display.update()
 
     while not first_field_made:
@@ -306,12 +322,12 @@ def main():
                 second_field_made = True
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    next_btn.rect.collidepoint(mouse) and ships_created_1:
+                    drawer.next_btn.rect.collidepoint(mouse) and ships_created_1:
                 first_field_made = True
-                draw_field_window('Игрок 2')
+                drawer.draw_field_window('Игрок 2')
             elif event.type == pygame.MOUSEBUTTONDOWN \
-                    and random_btn.rect.collidepoint(mouse):
-                players[1].generate_ships()
+                    and drawer.random_btn.rect.collidepoint(mouse):
+                players[1].generate_ships(drawer, 'Игрок 1')
                 ships_created_1 = True
         pygame.display.update()
 
@@ -321,12 +337,12 @@ def main():
             if event.type == pygame.QUIT:
                 second_field_made = True
                 game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and next_btn.rect.collidepoint(mouse) and ships_created_2:
+            elif event.type == pygame.MOUSEBUTTONDOWN and drawer.next_btn.rect.collidepoint(mouse) and ships_created_2:
                 second_field_made = True
-                draw_game_window('Игрок 1', 'Игрок 2')
+                drawer.draw_game_window('Игрок 1', 'Игрок 2')
             elif event.type == pygame.MOUSEBUTTONDOWN \
-                    and random_btn.rect.collidepoint(mouse):
-                players[2].generate_ships()
+                    and drawer.random_btn.rect.collidepoint(mouse):
+                players[2].generate_ships(drawer, 'Игрок 2')
                 ships_created_2 = True
         pygame.display.update()
     for player in players.values():
