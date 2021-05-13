@@ -7,7 +7,7 @@ RED = (255, 0, 0)
 GREEN = (0, 153, 153)
 
 OFFSETS = {1: 0,
-               2: 15}
+           2: 15}
 
 cell_size = 30
 left_margin = 70
@@ -60,7 +60,8 @@ class Field:
                 self.draw_ship(ship, turn)
                 s += 1
 
-    def make_four_deck_ship(self, x, y, turn):
+    @staticmethod
+    def make_four_deck_ship(x, y, turn):
         if turn == 0:
             if x == 1:
                 return [(1, y), (2, y), (3, y), (4, y)]
@@ -76,7 +77,8 @@ class Field:
             else:
                 return [(x, y - 1), (x, y), (x, y + 1), (x, y + 2)]
 
-    def make_three_deck_ship(self, x, y, turn):
+    @staticmethod
+    def make_three_deck_ship(x, y, turn):
         if turn == 0:
             if x == 1:
                 return [(1, y), (2, y), (3, y)]
@@ -92,7 +94,8 @@ class Field:
             else:
                 return [(x, y + 1), (x, y), (x, y - 1)]
 
-    def make_two_deck_ship(self, x, y, turn):
+    @staticmethod
+    def make_two_deck_ship(x, y, turn):
         if turn == 0:
             if x == 10:
                 return [(x - 1, y), (x, y)]
@@ -122,7 +125,8 @@ class Field:
             self.disable_cells(x, y, self.cells_around(x, y))
             self.ships[(x, y)] = (False, neighbours)
 
-    def draw_ship(self, ship, turn):
+    @staticmethod
+    def draw_ship(ship, turn):
         ship.sort(key=lambda i: i[1])
         x = cell_size * (ship[0][0] - 1) + left_margin
         y = cell_size * (ship[0][1] - 1) + top_margin
@@ -201,11 +205,67 @@ class Button:
                             y_start + button_height / 2 - title_height / 2
         self.drawer = drawer
 
-
     def change_color_on_hover(self):
         mouse = pygame.mouse.get_pos()
         if self.rect.collidepoint(mouse):
             self.drawer.draw_button(self, GREEN)
+
+
+class ShootingManager:
+    def __init__(self, player):
+        self.player = player
+        self.__offset = OFFSETS[player.player]
+
+    def missed(self, fired_cell):
+        if self.player.player == 2:
+            x1 = fired_cell[0] - 0.5 + 15
+        else:
+            x1 = fired_cell[0] - 0.5
+        pygame.draw.circle(screen, BLACK,
+                           (cell_size * x1 + left_margin, cell_size * (fired_cell[1] - 0.5) + top_margin),
+                           cell_size // 6)
+        self.player.cells_state[fired_cell] = False
+
+    def wounded(self, fired_cell):
+        x_c = fired_cell[0]
+        y_c = fired_cell[1]
+        x_d = cell_size * (x_c - 1 + self.__offset) + left_margin
+        y_d = cell_size * (y_c - 1) + top_margin
+        pygame.draw.line(screen, BLACK, (x_d, y_d),
+                         (x_d + cell_size, y_d + cell_size), cell_size // 10)
+        pygame.draw.line(screen, BLACK, (x_d, y_d + cell_size),
+                         (x_d + cell_size, y_d), cell_size // 10)
+        self.player.ships[(x_c, y_c)] = (True, self.player.ships[(x_c, y_c)][1])
+
+    def is_killed(self, fired_cell):
+        x_c = fired_cell[0]
+        y_c = fired_cell[1]
+        killed_ship = [(x_c, y_c)]
+        for neighbour in self.player.ships[(x_c, y_c)][1]:
+            n_x = neighbour[0]
+            n_y = neighbour[1]
+            if self.player.ships[(n_x, n_y)][0]:
+                killed_ship.append((n_x, n_y))
+        if len(killed_ship) == len(self.player.ships[(x_c, y_c)][1]) + 1:
+            return True
+        return False
+
+    def killed(self, fired_cell):
+        x_d = cell_size * (fired_cell[0] - 1 + self.__offset) + left_margin
+        y_d = cell_size * (fired_cell[1] - 1) + top_margin
+        pygame.draw.line(screen, RED, (x_d, y_d),
+                         (x_d + cell_size, y_d + cell_size), cell_size // 10)
+        pygame.draw.line(screen, RED, (x_d, y_d + cell_size),
+                         (x_d + cell_size, y_d), cell_size // 10)
+
+        for neighbour in self.player.ships[(fired_cell[0], fired_cell[1])][1]:
+            x_d = cell_size * (neighbour[0] - 1 + self.__offset) + left_margin
+            y_d = cell_size * (neighbour[1] - 1) + top_margin
+            pygame.draw.line(screen, RED, (x_d, y_d),
+                             (x_d + cell_size, y_d + cell_size),
+                             cell_size // 10)
+            pygame.draw.line(screen, RED, (x_d, y_d + cell_size),
+                             (x_d + cell_size, y_d), cell_size // 10)
 
 
 class DrawManager:
@@ -297,8 +357,8 @@ def main():
     screen.fill(WHITE)
     drawer = DrawManager()
     drawer.draw_game_window("Игрок 1", "Игрок 2")
-
-
+    shootings = {1: ShootingManager(players[1]),
+                 2: ShootingManager(players[2])}
 
     while not game_start:
         mouse = pygame.mouse.get_pos()
@@ -345,65 +405,13 @@ def main():
                 players[2].generate_ships(drawer, 'Игрок 2')
                 ships_created_2 = True
         pygame.display.update()
+
     for player in players.values():
         player.set_cells_state()
 
     def change_turn():
         nonlocal player_num, enemy_num
         player_num, enemy_num = enemy_num, player_num
-
-    def missed(x, y, player):
-        if player.player == 2:
-            x1 = x - 0.5 + 15
-        else:
-            x1 = x - 0.5
-        pygame.draw.circle(screen, BLACK, (cell_size * x1 + left_margin, cell_size * (y - 0.5) + top_margin),
-                           cell_size // 6)
-        player.cells_state[(x, y)] = False
-
-    def wounded(ships):
-        nonlocal offset, fired_cell
-        x_c = fired_cell[0]
-        y_c = fired_cell[1]
-        x_d = cell_size * (x_c - 1 + offset) + left_margin
-        y_d = cell_size * (y_c - 1) + top_margin
-        pygame.draw.line(screen, BLACK, (x_d, y_d),
-                         (x_d + cell_size, y_d + cell_size), cell_size // 10)
-        pygame.draw.line(screen, BLACK, (x_d, y_d + cell_size),
-                         (x_d + cell_size, y_d), cell_size // 10)
-        ships[(x_c, y_c)] = (True, ships[(x_c, y_c)][1])
-
-    def is_killed(ships):
-        nonlocal fired_cell
-        x_c = fired_cell[0]
-        y_c = fired_cell[1]
-        killed_ship = [(x_c, y_c)]
-        for neighbour in ships[(x_c, y_c)][1]:
-            n_x = neighbour[0]
-            n_y = neighbour[1]
-            if ships[(n_x, n_y)][0]:
-                killed_ship.append((n_x, n_y))
-        if len(killed_ship) == len(ships[(x_c, y_c)][1]) + 1:
-            return True
-        return False
-
-    def killed(ships):
-        nonlocal offset, fired_cell
-        x_d = cell_size * (fired_cell[0] - 1 + offset) + left_margin
-        y_d = cell_size * (fired_cell[1] - 1) + top_margin
-        pygame.draw.line(screen, RED, (x_d, y_d),
-                         (x_d + cell_size, y_d + cell_size), cell_size // 10)
-        pygame.draw.line(screen, RED, (x_d, y_d + cell_size),
-                         (x_d + cell_size, y_d), cell_size // 10)
-
-        for neighbour in ships[(fired_cell[0], fired_cell[1])][1]:
-            x_d = cell_size * (neighbour[0] - 1 + offset) + left_margin
-            y_d = cell_size * (neighbour[1] - 1) + top_margin
-            pygame.draw.line(screen, RED, (x_d, y_d),
-                             (x_d + cell_size, y_d + cell_size),
-                             cell_size // 10)
-            pygame.draw.line(screen, RED, (x_d, y_d + cell_size),
-                             (x_d + cell_size, y_d), cell_size // 10)
 
     def check_for_winner():
         if scores[1] == 20:
@@ -427,13 +435,13 @@ def main():
                     if fired_cell in enemy.ships and \
                             enemy.ships[fired_cell][0] is False:
                         scores[player_num] += 1
-                        wounded(enemy.ships)
-                        if is_killed(enemy.ships):
-                            killed(enemy.ships)
+                        shootings[enemy_num].wounded(fired_cell)
+                        if shootings[enemy_num].is_killed(fired_cell):
+                            shootings[enemy_num].killed(fired_cell)
                     elif fired_cell not in enemy.ships:
                         if enemy.cells_state[fired_cell] is True:
                             change_turn()
-                        missed(fired_cell[0], fired_cell[1], enemy)
+                        shootings[player_num].missed(fired_cell)
 
                 check_for_winner()
 
