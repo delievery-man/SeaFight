@@ -8,12 +8,15 @@ GREEN = (0, 153, 153)
 
 OFFSETS = {1: 0,
            2: 15}
+offset_for_field = 0
+field_size = 10
 
 cell_size = 30
-left_margin = 70
+left_margin = 60
 top_margin = 90
 
 screen_width, screen_height = left_margin * 2 + cell_size * 25, top_margin * 2 + 40 + cell_size * 10
+print(screen_width)
 btn_width, btn_height = 175, 45
 
 pygame.init()
@@ -25,8 +28,23 @@ font_size = int(cell_size / 1.5)
 font = pygame.font.SysFont('notosans', font_size)
 
 
+class FieldParams:
+    def __init__(self, field_size=10, num_4=1, num_3=0, num_2=0, num_1=0):
+        self.field_size = field_size
+        self.num_4 = num_4
+        self.num_3 = num_3
+        self.num_2 = num_2
+        self.num_1 = num_1
+        self.offset = (10 - field_size) / 2
+
+
 class Field:
-    def __init__(self, player):
+    def __init__(self, player, field_params):
+        self.field_size = field_params.field_size
+        self.num_4 = field_params.num_4
+        self.num_3 = field_params.num_3
+        self.num_2 = field_params.num_2
+        self.num_1 = field_params.num_1
         self.cells_state = dict()
         self.set_cells_state()
         self.player = player
@@ -34,91 +52,44 @@ class Field:
         self.ships = dict()
 
     def set_cells_state(self):
-        for x in range(1, 11):
-            for y in range(1, 11):
+        for x in range(1, self.field_size + 1):
+            for y in range(1, self.field_size + 1):
                 self.cells_state[(x, y)] = True
 
     def generate_ships(self, drawer, label):
-        s = 0
         self.ships = {}
         self.set_cells_state()
         drawer.draw_field_window(label)
 
-        while s < 10:
-            x = random.randint(1, 10)
-            y = random.randint(1, 10)
+        numbers_of_ships = [self.num_1, self.num_2, self.num_3, self.num_4]
+        for i in range(len(numbers_of_ships)):
+            self.generate_ships_by_length(numbers_of_ships[i], i + 1, drawer)
+
+    def generate_ships_by_length(self, number_of_ships, length, drawer):
+        s = 0
+        while s < number_of_ships:
+            x = random.randint(1, self.field_size)
+            y = random.randint(1, self.field_size)
             turn = random.randint(0, 1)
-            if s == 0:
-                ship = self.make_four_deck_ship(x, y, turn)
-            elif 1 <= s <= 2:
-                ship = self.make_three_deck_ship(x, y, turn)
-            elif 3 <= s <= 5:
-                ship = self.make_two_deck_ship(x, y, turn)
-            else:
-                ship = [(x, y)]
+            ship = self.make_ship(x, y, turn, length)
             if self.is_ship_can_be_put(ship):
                 self.add_ship(ship)
-                self.draw_ship(ship, turn, 7.5 * cell_size)
+                drawer.draw_ship(ship, turn, 7.5)
                 s += 1
 
-    @staticmethod
-    def draw_ship(ship, turn, offset):
-        ship.sort(key=lambda i: i[1])
-        x = cell_size * (ship[0][0] - 1) + left_margin + offset
-        y = cell_size * (ship[0][1] - 1) + top_margin
-        if turn == 1:
-            width = cell_size
-            height = cell_size * len(ship)
-
-        else:
-            width = cell_size * len(ship)
-            height = cell_size
-        pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
-                         width=cell_size // 10)
-
-    def make_four_deck_ship(self, x, y, turn):
+    def make_ship(self, x, y, turn, length):
         if turn == 0:
-            if x == 1:
-                return [(1, y), (2, y), (3, y), (4, y)]
-            if x == 10 or x == 9:
-                return [(7, y), (8, y), (9, y), (10, y)]
+            if x == self.field_size or x == self.field_size - 1:
+                return [(self.field_size - i, y) for i in
+                        range(length - 1, -1, -1)]
             else:
-                return [(x - 1, y), (x, y), (x + 1, y), (x + 2, y)]
+                return [(i, y) for i in range(1, length + 1)]
         else:
-            if y == 1:
-                return [(x, 1), (x, 2), (x, 3), (x, 4)]
-            elif y == 10 or y == 9:
-                return [(x, 7), (x, 8), (x, 9), (x, 10)]
+            if y == self.field_size or y == self.field_size - 1:
+                return [(x, self.field_size - i) for i in
+                        range(length - 1, -1, -1)]
             else:
-                return [(x, y - 1), (x, y), (x, y + 1), (x, y + 2)]
-
-    def make_three_deck_ship(self, x, y, turn):
-        if turn == 0:
-            if x == 1:
-                return [(1, y), (2, y), (3, y)]
-            elif x == 10:
-                return [(8, y), (9, y), (10, y)]
-            else:
-                return [(x - 1, y), (x, y), (x + 1, y)]
-        else:
-            if y == 1:
-                return [(x, 1), (x, 2), (x, 3)]
-            elif y == 10:
-                return [(x, 8), (x, 9), (x, 10)]
-            else:
-                return [(x, y - 1), (x, y), (x, y + 1)]
-
-    def make_two_deck_ship(self, x, y, turn):
-        if turn == 0:
-            if x == 10:
-                return [(x - 1, y), (x, y)]
-            else:
-                return [(x, y), (x + 1, y)]
-        else:
-            if y == 10:
-                return [(x, y - 1), (x, y)]
-            else:
-                return [(x, y), (x, y + 1)]
+                return [(x, i) for i in range(1, length + 1)]
 
     def is_ship_can_be_put(self, ship):
         for cell in ship:
@@ -135,58 +106,16 @@ class Field:
                 if n == cell:
                     continue
                 neighbours.append(n)
-            self.disable_cells(x, y, self.cells_around(x, y))
+            self.disable_cells(x, y)
             self.ships[(x, y)] = (False, neighbours)
 
-    def disable_cells(self, x, y, directions):
-        self.cells_state[(x, y)] = False
-        for d in directions:
-            if d == 'up':
-                self.cells_state[(x, y - 1)] = False
-            elif d == 'down':
-                self.cells_state[(x, y + 1)] = False
-            elif d == 'left':
-                key = (x - 1, y)
-                self.cells_state[key] = False
-            elif d == 'right':
-                key = (x + 1, y)
-                self.cells_state[key] = False
-            elif d == 'up-left':
-                key = (x - 1, y - 1)
-                self.cells_state[key] = False
-            elif d == 'up-right':
-                key = (x + 1, y - 1)
-                self.cells_state[key] = False
-            elif d == 'down-left':
-                key = (x - 1, y + 1)
-                self.cells_state[key] = False
-            elif d == 'down-right':
-                key = (x + 1, y + 1)
-                self.cells_state[key] = False
-
-    def cells_around(self, x, y):
-        if y == 1:
-            if x == 1:
-                return ['down', 'down-right', 'right']
-            elif x == 10:
-                return ['left', 'down-left', 'down']
-            else:
-                return ['left', 'down-left', 'down', 'down-right', 'right']
-        elif y == 10:
-            if x == 1:
-                return ['up', 'up-right', 'right']
-            elif x == 10:
-                return ['left', 'up-left', 'up']
-            else:
-                return ['left', 'up-left', 'up', 'up-right', 'right']
-        else:
-            if x == 1:
-                return ['up', 'up-right', 'right', 'down-right', 'down']
-            elif x == 10:
-                return ['down', 'down-left', 'left', 'up-left', 'up']
-            else:
-                return ['left', 'up-left', 'up', 'up-right', 'right',
-                        'down-right', 'down', 'down-left']
+    def disable_cells(self, x, y):
+        cells_around = [(x + i, y + j) for i in range(-1, 2) for j in
+                        range(-1, 2)]
+        for cell in cells_around:
+            if cell[0] < 1 or cell[0] > self.field_size or cell[1] < 1 or cell[1] > self.field_size:
+                continue
+            self.cells_state[cell] = False
 
 
 class Button:
@@ -218,8 +147,8 @@ class ShootingManager:
         self.player.cells_state[(x, y)] = False
 
     def wounded(self, x, y):
-        self.drawer.put_cross(cell_size * (x - 1 + self.__offset) + left_margin,
-                         cell_size * (y - 1) + top_margin)
+        self.drawer.put_cross(cell_size * (x - 1 + self.__offset + offset_for_field) + left_margin,
+                         cell_size * (y - 1 + offset_for_field) + top_margin)
         self.drawer.put_dots([(x + 1, y + 1), (x - 1, y - 1), (x + 1, y - 1),
                          (x - 1, y + 1)], self.__offset)
         self.player.ships[(x, y)] = (True, self.player.ships[(x, y)][1])
@@ -236,13 +165,13 @@ class ShootingManager:
         return False
 
     def killed(self, x, y):
-        self.drawer.put_cross(cell_size * (x - 1 + self.__offset) +
-                         left_margin, cell_size * (y - 1) +
+        self.drawer.put_cross(cell_size * (x - 1 + self.__offset + offset_for_field) +
+                         left_margin, cell_size * (y - 1 + offset_for_field) +
                          top_margin, RED)
         neighbours = self.player.ships[(x, y)][1]
         for neighbour in neighbours:
-            self.drawer.put_cross(cell_size * (neighbour[0] - 1 + self.__offset) +
-                             left_margin, cell_size * (neighbour[1] - 1) +
+            self.drawer.put_cross(cell_size * (neighbour[0] - 1 + self.__offset + offset_for_field) +
+                             left_margin, cell_size * (neighbour[1] - 1 + offset_for_field) +
                              top_margin, RED)
         dots = []
         ship = [n for n in neighbours]
@@ -287,17 +216,17 @@ class DrawManager:
     @staticmethod
     def draw_field(offset):
         letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
-        for i in range(11):
+        for i in range(field_size + 1):
             pygame.draw.line(screen, BLACK,
-                             (left_margin + offset * cell_size, top_margin + i *
-                              cell_size), (left_margin + (offset + 10) * cell_size,
-                                           top_margin + i * cell_size))
+                             (left_margin + (offset + offset_for_field) * cell_size, top_margin + (i + offset_for_field) *
+                              cell_size), (left_margin + (offset + field_size + offset_for_field) * cell_size,
+                                           top_margin + (i + offset_for_field) * cell_size))
             pygame.draw.line(screen, BLACK,
-                             (left_margin + (i + offset) * cell_size, top_margin),
-                             (left_margin + (i + offset) * cell_size,
-                              top_margin + 10 * cell_size))
+                             (left_margin + (i + offset + offset_for_field) * cell_size, top_margin + offset_for_field * cell_size),
+                             (left_margin + (i + offset + offset_for_field) * cell_size,
+                              top_margin + (field_size + offset_for_field) * cell_size))
 
-            if i < 10:
+            if i < field_size:
                 num = font.render(str(i + 1), True, BLACK)
                 let = font.render(letters[i], True, BLACK)
 
@@ -306,12 +235,12 @@ class DrawManager:
                 let_width = let.get_width()
 
                 screen.blit(num, (left_margin - (cell_size // 2 + num_width // 2) +
-                                  offset * cell_size, top_margin + i * cell_size +
+                                  (offset + offset_for_field) * cell_size, top_margin + (i + offset_for_field) * cell_size +
                                   (cell_size // 2 - num_height // 2)))
 
-                screen.blit(let, (left_margin + i * cell_size +
+                screen.blit(let, (left_margin + (i + offset_for_field) * cell_size +
                                   (cell_size // 2 - let_width // 2) + offset *
-                                  cell_size, top_margin - num_height * 1.5))
+                                  cell_size, top_margin - num_height * 1.5 + offset_for_field * cell_size))
 
     @staticmethod
     def make_label(text, x_offset, y_offset=-cell_size, color=BLACK):
@@ -352,33 +281,28 @@ class DrawManager:
         screen.blit(score_label, (x_start, y_start))
 
     @staticmethod
-    def draw_ships(ships, offset=0.0):
-        for ship in ships:
-            if len(ship) > 1:
-                if ship[0][1] == ship[1][1]:
-                    turn = 0
-                else:
-                    turn = 1
-            else:
-                turn = 1
-            if turn == 1:
-                width = cell_size
-                height = cell_size * len(ship)
-            else:
-                width = cell_size * len(ship)
-                height = cell_size
-            x = cell_size * (ship[0][0] - 1) + left_margin + offset
-            y = cell_size * (ship[0][1] - 1) + top_margin
-            pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
-                             width=cell_size // 10)
+    def draw_ship(ship, turn, offset):
+        ship.sort(key=lambda i: i[1])
+        x = cell_size * (ship[0][0] - 1) + left_margin + (offset + offset_for_field) * cell_size
+        y = cell_size * (ship[0][
+                             1] - 1) + top_margin + offset_for_field * cell_size
+        if turn == 1:
+            width = cell_size
+            height = cell_size * len(ship)
+
+        else:
+            width = cell_size * len(ship)
+            height = cell_size
+        pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
+                         width=cell_size // 10)
 
     @staticmethod
     def put_dots(dots, offset):
         for (x, y) in dots:
-            if x < 1 or y < 1 or x > 10 or y > 10:
+            if x < 1 or y < 1 or x > field_size or y > field_size:
                 continue
-            x_d = x - 0.5 + offset
-            y_d = y
+            x_d = x - 0.5 + offset + offset_for_field
+            y_d = y + offset_for_field
             pygame.draw.circle(screen, BLACK, (cell_size * x_d + left_margin,
                                                cell_size * (y_d - 0.5) +
                                                top_margin), cell_size // 6)
@@ -392,8 +316,12 @@ class DrawManager:
 
 
 def main():
-    players = {1: Field(1),
-               2: Field(2)}
+    global offset_for_field, field_size
+    field_params = FieldParams(6)
+    offset_for_field = field_params.offset
+    field_size = field_params.field_size
+    players = {1: Field(1, field_params),
+               2: Field(2, field_params)}
     scores = {2: 0,
               1: 0}
     offsets = {1: 0,
@@ -481,11 +409,12 @@ def main():
                 x, y = event.pos
                 offset = offsets[enemy_num]
                 enemy = players[enemy_num]
-                if left_margin + offset * cell_size <= x <= left_margin + \
-                        (10 + offset) * cell_size and top_margin <= y <= \
-                        top_margin + 10 * cell_size:
-                    fired_cell = ((x - left_margin) // cell_size + 1 - offset,
-                                  (y - top_margin) // cell_size + 1)
+                if left_margin + (offset + offset_for_field) * cell_size <= x <= left_margin + \
+                        (field_size + offset + offset_for_field) * cell_size and top_margin + offset_for_field * cell_size <= y <= \
+                        top_margin + (field_size + offset_for_field) * cell_size:
+                    fired_cell = (int((x - left_margin) // cell_size + 1 - offset - offset_for_field),
+                                  int((y - top_margin) // cell_size + 1 - offset_for_field))
+                    print(fired_cell)
                     if fired_cell in enemy.ships and \
                             enemy.ships[fired_cell][0] is False:
                         scores[player_num] += 1
