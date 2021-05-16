@@ -369,6 +369,7 @@ class DrawManager:
 
 def main():
     global offset_for_field, field_size, OFFSETS
+
     field_params = FieldParams()
 
     drawer = DrawManager()
@@ -549,7 +550,20 @@ def main():
         player_num, enemy_num = enemy_num, player_num
 
     def is_winner(player):
-        return scores[player] == 20
+        return scores[player] == field_params.num_4 * 4 + \
+               field_params.num_3 * 3 + field_params.num_2 * 2 \
+               + field_params.num_1
+
+    pygame.mixer.music.load('morskoj-priboj.mp3')
+    pygame.mixer.music.set_volume(0.3)
+    pygame.mixer.music.play()
+
+    sound_missed = pygame.mixer.Sound('splash.mp3')
+    sound_missed.set_volume(0.8)
+    sound_wounded = pygame.mixer.Sound('shot.mp3')
+    sound_wounded.set_volume(2)
+    sound_killed = pygame.mixer.Sound('killed-shot.mp3')
+    sound_wounded.set_volume(1.3)
 
     while not game_over:
         for event in pygame.event.get():
@@ -572,6 +586,9 @@ def main():
                         drawer.update_score(scores[player_num], OFFSETS[player_num])
                         if shootings[enemy_num].is_killed(fired_cell[0], fired_cell[1]):
                             shootings[enemy_num].killed(fired_cell[0], fired_cell[1])
+                            sound_killed.play()
+                        else:
+                            sound_wounded.play()
                         if is_winner(player_num):
                             drawer.make_label(
                                 'Игрок {0} победил'.format(player_num), 7.5,
@@ -580,6 +597,7 @@ def main():
                         if enemy.cells_state[fired_cell] is True:
                             change_turn()
                         shootings[player_num].missed(fired_cell[0], fired_cell[1])
+                        sound_missed.play()
 
         pygame.display.update()
 
