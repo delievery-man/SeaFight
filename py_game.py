@@ -122,10 +122,7 @@ class Button:
     def __init__(self, button_title, drawer):
         self.title = button_title
         self.title_width, self.title_height = font.size(self.title)
-        # self.btn_params = x_start, y_start, width, height
         self.rect = pygame.Rect((0, 0, 0, 0))
-        # self.title_params = (x_start + width / 2 - title_width / 2,
-        #                      y_start + height / 2 - title_height / 2)
         self.drawer = drawer
 
     def change_color_on_hover(self):
@@ -197,8 +194,24 @@ class DrawManager:
         self.random_btn = Button('Расставить рандомно', self)
         self.next_btn = Button('Дальше', self)
 
-        self.minus_btn = Button('-', self)
-        self.plus_btn = Button('+', self)
+        self.minus_size_btn = Button('-', self)
+        self.plus_size_btn = Button('+', self)
+        self.minus_4_btn = Button('-', self)
+        self.plus_4_btn = Button('+', self)
+        self.minus_3_btn = Button('-', self)
+        self.plus_3_btn = Button('+', self)
+        self.minus_2_btn = Button('-', self)
+        self.plus_2_btn = Button('+', self)
+        self.minus_1_btn = Button('-', self)
+        self.plus_1_btn = Button('+', self)
+
+        self.field_settings_buttons = [(self.minus_size_btn,
+                                        self.plus_size_btn),
+                                       (self.minus_4_btn, self.plus_4_btn),
+                                       (self.minus_3_btn, self.plus_3_btn),
+                                       (self.minus_2_btn, self.plus_2_btn),
+                                       (self.minus_1_btn, self.plus_1_btn)]
+
 
     @staticmethod
     def draw_button(button, x_start, y_start, width=btn_width, height=btn_height, color=BLACK):
@@ -241,6 +254,7 @@ class DrawManager:
     def make_label(text, x_offset, y_offset=-cell_size, color=BLACK):
         label = font.render(text, True, color)
         label_width = label.get_width()
+        print(label_width)
         label_height = label.get_height()
         screen.blit(label, (left_margin + x_offset * cell_size +
                             (10 * cell_size - label_width) / 2, top_margin - label_height + y_offset))
@@ -254,23 +268,33 @@ class DrawManager:
 
     def draw_field_settings_window(self, field_params):
         screen.fill(WHITE)
-        self.draw_button(self.minus_btn, left_margin, top_margin, cell_size, cell_size)
-        self.update_param(field_params.field_size, 0)
-        self.draw_button(self.plus_btn, left_margin + 2.5 * cell_size + 20, top_margin, cell_size, cell_size)
+
+        self.make_label('Настройте параметры поля', 7.5, 0)
+
+        x_start = left_margin + 13 * cell_size
+        y_start = top_margin * 1.5
+        for minus_btn, plus_btn in self.field_settings_buttons:
+            self.draw_button(minus_btn, x_start, y_start, cell_size, cell_size)
+            self.draw_button(plus_btn, x_start + 2.5 * cell_size + 20, y_start, cell_size, cell_size)
+            y_start += 1.5 * cell_size
+
+        params = [field_params.field_size, field_params.num_4,
+                  field_params.num_3, field_params.num_2, field_params.num_1]
+        y_start = top_margin * 1.5
+        for p in params:
+            self.update_param(p, 0, y_start)
+            y_start += 1.5 * cell_size
         self.draw_button(self.next_btn, (screen_width - btn_width * 2 - 5) / 2 +
                                btn_width + 10, top_margin + 10 * cell_size +
                                btn_height)
 
-    def update_param(self, param, delta):
-        x_rect = left_margin + cell_size + 10
-        y_rect = top_margin
-        pygame.draw.rect(screen, WHITE,
-                         (x_rect, y_rect, cell_size * 1.5, cell_size))
-        pygame.draw.rect(screen, BLACK,
-                         (x_rect, y_rect, cell_size * 1.5, cell_size),
-                         width=2)
+    def update_param(self, param, delta, y_start):
+        x_start = left_margin + 10 + 14 * cell_size
+        rect_params = (x_start, y_start, cell_size * 1.5, cell_size)
+        pygame.draw.rect(screen, WHITE, rect_params)
+        pygame.draw.rect(screen, BLACK, rect_params, width=2)
         num = font.render(str(param + delta), True, BLACK)
-        screen.blit(num, (x_rect + 0.5 * cell_size, y_rect + 0.25 * cell_size))
+        screen.blit(num, (x_start + 0.5 * cell_size, y_start + 0.25 * cell_size))
 
     def draw_field_window(self, label):
         screen.fill(WHITE)
@@ -342,19 +366,9 @@ class DrawManager:
 
 def main():
     global offset_for_field, field_size, OFFSETS
-    field_params = FieldParams(6)
-    offset_for_field = field_params.offset
-    field_size = field_params.field_size
+    field_params = FieldParams()
 
-    players = {1: Field(1, field_params),
-               2: Field(2, field_params)}
-    scores = {2: 0,
-              1: 0}
     drawer = DrawManager()
-    shootings = {1: ShootingManager(players[1], drawer),
-                 2: ShootingManager(players[2], drawer)}
-    enemy_num = 2
-    player_num = 1
 
     game_over = False
     game_start = False
@@ -382,6 +396,7 @@ def main():
                 drawer.draw_field_settings_window(field_params)
         pygame.display.update()
 
+    y_start = top_margin * 1.5
     while not field_set_up:
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
@@ -393,16 +408,62 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if drawer.next_btn.rect.collidepoint(mouse):
                     field_set_up = True
+                    field_params = FieldParams(field_params.field_size, field_params.num_4, field_params.num_3, field_params.num_2, field_params.num_1)
+                    offset_for_field = field_params.offset
+                    field_size = field_params.field_size
                     drawer.draw_field_window('Игрок 1')
-                elif drawer.plus_btn.rect.collidepoint(mouse):
-                    drawer.update_param(field_params.field_size, 1)
+
+                elif drawer.plus_size_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.field_size, 1, y_start)
                     field_params.field_size += 1
-                elif drawer.minus_btn.rect.collidepoint(mouse):
-                    drawer.update_param(field_params.field_size, -1)
+                elif drawer.minus_size_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.field_size, -1, y_start)
                     field_params.field_size -= 1
 
+                elif drawer.plus_4_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_4, 1, y_start + 1.5 * cell_size)
+                    field_params.num_4 += 1
+                elif drawer.minus_4_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_4, -1, y_start + 1.5 * cell_size)
+                    field_params.num_4 -= 1
+
+                elif drawer.plus_3_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_3, 1,
+                                        y_start + 3 * cell_size)
+                    field_params.num_3 += 1
+                elif drawer.minus_3_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_3, -1,
+                                        y_start + 3 * cell_size)
+                    field_params.num_3 -= 1
+
+                elif drawer.plus_2_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_2, 1,
+                                        y_start + 4.5 * cell_size)
+                    field_params.num_2 += 1
+                elif drawer.minus_2_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_2, -1,
+                                        y_start + 4.5 * cell_size)
+                    field_params.num_2 -= 1
+
+                elif drawer.plus_1_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_1, 1,
+                                        y_start + 6 * cell_size)
+                    field_params.num_1 += 1
+                elif drawer.minus_1_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.num_1, -1,
+                                        y_start + 6 * cell_size)
+                    field_params.num_1 -= 1
 
         pygame.display.update()
+
+    players = {1: Field(1, field_params),
+               2: Field(2, field_params)}
+    scores = {2: 0,
+              1: 0}
+    shootings = {1: ShootingManager(players[1], drawer),
+                 2: ShootingManager(players[2], drawer)}
+    enemy_num = 2
+    player_num = 1
 
     while not first_field_made:
         mouse = pygame.mouse.get_pos()
@@ -459,8 +520,8 @@ def main():
                 if left_margin + (offset + offset_for_field) * cell_size <= x <= left_margin + \
                         (field_size + offset + offset_for_field) * cell_size and top_margin + offset_for_field * cell_size <= y <= \
                         top_margin + (field_size + offset_for_field) * cell_size:
-                    fired_cell = (int((x - left_margin) // cell_size + 1 - offset - offset_for_field),
-                                  int((y - top_margin) // cell_size + 1 - offset_for_field))
+                    fired_cell = (int((x - left_margin) / cell_size + 1 - offset - offset_for_field),
+                                  int((y - top_margin) / cell_size + 1 - offset_for_field))
                     print(fired_cell)
                     if fired_cell in enemy.ships and \
                             enemy.ships[fired_cell][0] is False:
