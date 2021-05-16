@@ -29,7 +29,7 @@ font = pygame.font.SysFont('notosans', font_size)
 
 
 class FieldParams:
-    def __init__(self, field_size=10, num_4=1, num_3=0, num_2=0, num_1=0):
+    def __init__(self, field_size=10, num_4=1, num_3=2, num_2=3, num_1=4):
         self.field_size = field_size
         self.num_4 = num_4
         self.num_3 = num_3
@@ -254,10 +254,12 @@ class DrawManager:
     def make_label(text, x_offset, y_offset=-cell_size, color=BLACK):
         label = font.render(text, True, color)
         label_width = label.get_width()
-        print(label_width)
         label_height = label.get_height()
+        pygame.draw.rect(screen, WHITE, (left_margin + x_offset * cell_size +
+                            (10 * cell_size - label_width) / 2 - label_width * 0.5, top_margin - label_height + y_offset, label_width * 2, label_height))
         screen.blit(label, (left_margin + x_offset * cell_size +
-                            (10 * cell_size - label_width) / 2, top_margin - label_height + y_offset))
+                            (10 * cell_size - label_width) / 2,
+                            top_margin - label_height + y_offset))
 
     def draw_start_window(self):
         self.draw_button(self.start_with_friend_btn, (screen_width - btn_width * 2) / 3,
@@ -327,6 +329,7 @@ class DrawManager:
         screen.fill(WHITE)
         for offset in OFFSETS.values():
             self.draw_field(offset)
+
         self.make_label(player1, 0)
         self.make_label(player2, 15)
         self.update_score(0, 0)
@@ -396,6 +399,19 @@ def main():
                 drawer.draw_field_settings_window(field_params)
         pygame.display.update()
 
+    def are_params_correct():
+        return not zero_ships() and field_params.field_size > 0 and \
+               not too_many_ships()
+
+    def zero_ships():
+        return field_params.num_1 == 0 and field_params.num_2 == 0 \
+               and field_params.num_3 == 0 and field_params.num_4 == 0
+
+    def too_many_ships():
+        return field_params.num_4 * 4 + field_params.num_3 * 3 + \
+               field_params.num_2 * 2 + field_params.num_1 >= \
+               (field_params.field_size * field_params.field_size) / 2
+
     y_start = top_margin * 1.5
     while not field_set_up:
         mouse = pygame.mouse.get_pos()
@@ -407,16 +423,34 @@ def main():
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if drawer.next_btn.rect.collidepoint(mouse):
-                    field_set_up = True
-                    field_params = FieldParams(field_params.field_size, field_params.num_4, field_params.num_3, field_params.num_2, field_params.num_1)
-                    offset_for_field = field_params.offset
-                    field_size = field_params.field_size
-                    drawer.draw_field_window('Игрок 1')
+                    if are_params_correct():
+                        field_set_up = True
+                        field_params = FieldParams(field_params.field_size, field_params.num_4, field_params.num_3, field_params.num_2, field_params.num_1)
+                        offset_for_field = field_params.offset
+                        field_size = field_params.field_size
+                        drawer.draw_field_window('Игрок 1')
+                    else:
+                        if field_params.field_size == 0:
+                            drawer.make_label(
+                                'Размер поля должен быть больше 0',
+                                7.5, 10 * cell_size, RED)
+                        elif zero_ships():
+                            drawer.make_label(
+                                'Слишком мало кораблей',
+                                7.5, 10 * cell_size, RED)
+                        elif too_many_ships():
+                            drawer.make_label(
+                                'Уменьшите количество кораблей',
+                                7.5, 10 * cell_size, RED)
 
                 elif drawer.plus_size_btn.rect.collidepoint(mouse):
+                    if field_params.field_size == 10:
+                        continue
                     drawer.update_param(field_params.field_size, 1, y_start)
                     field_params.field_size += 1
                 elif drawer.minus_size_btn.rect.collidepoint(mouse):
+                    if field_params.field_size == 0:
+                        continue
                     drawer.update_param(field_params.field_size, -1, y_start)
                     field_params.field_size -= 1
 
@@ -424,6 +458,8 @@ def main():
                     drawer.update_param(field_params.num_4, 1, y_start + 1.5 * cell_size)
                     field_params.num_4 += 1
                 elif drawer.minus_4_btn.rect.collidepoint(mouse):
+                    if field_params.num_4 == 0:
+                        continue
                     drawer.update_param(field_params.num_4, -1, y_start + 1.5 * cell_size)
                     field_params.num_4 -= 1
 
@@ -432,6 +468,8 @@ def main():
                                         y_start + 3 * cell_size)
                     field_params.num_3 += 1
                 elif drawer.minus_3_btn.rect.collidepoint(mouse):
+                    if field_params.num_3 == 0:
+                        continue
                     drawer.update_param(field_params.num_3, -1,
                                         y_start + 3 * cell_size)
                     field_params.num_3 -= 1
@@ -441,6 +479,8 @@ def main():
                                         y_start + 4.5 * cell_size)
                     field_params.num_2 += 1
                 elif drawer.minus_2_btn.rect.collidepoint(mouse):
+                    if field_params.num_2 == 0:
+                        continue
                     drawer.update_param(field_params.num_2, -1,
                                         y_start + 4.5 * cell_size)
                     field_params.num_2 -= 1
@@ -450,6 +490,8 @@ def main():
                                         y_start + 6 * cell_size)
                     field_params.num_1 += 1
                 elif drawer.minus_1_btn.rect.collidepoint(mouse):
+                    if field_params.num_1 == 0:
+                        continue
                     drawer.update_param(field_params.num_1, -1,
                                         y_start + 6 * cell_size)
                     field_params.num_1 -= 1
