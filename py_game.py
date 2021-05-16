@@ -16,7 +16,7 @@ left_margin = 60
 top_margin = 90
 
 screen_width, screen_height = left_margin * 2 + cell_size * 25, top_margin * 2 + 40 + cell_size * 10
-print(screen_width)
+
 btn_width, btn_height = 175, 45
 
 pygame.init()
@@ -119,15 +119,13 @@ class Field:
 
 
 class Button:
-    def __init__(self, x_start, y_start, button_title, drawer):
+    def __init__(self, button_title, drawer):
         self.title = button_title
-        title_width, title_height = font.size(self.title)
-        self.button_width = 175
-        self.button_height = 45
-        self.btn_params = x_start, y_start, self.button_width, self.button_height
-        self.rect = pygame.Rect(self.btn_params)
-        self.title_params = x_start + self.button_width / 2 - title_width / 2, \
-                            y_start + self.button_height / 2 - title_height / 2
+        self.title_width, self.title_height = font.size(self.title)
+        # self.btn_params = x_start, y_start, width, height
+        self.rect = pygame.Rect((0, 0, 0, 0))
+        # self.title_params = (x_start + width / 2 - title_width / 2,
+        #                      y_start + height / 2 - title_height / 2)
         self.drawer = drawer
 
     def change_color_on_hover(self):
@@ -193,25 +191,22 @@ class ShootingManager:
 class DrawManager:
 
     def __init__(self):
-        self.start_with_friend_btn = Button((screen_width - btn_width * 2) / 3,
-                                            (screen_height - btn_height) / 2,
-                                            'Играть с другом',
+        self.start_with_friend_btn = Button('Играть с другом',
                                             self)
-        self.start_with_computer_btn = Button((screen_width - btn_width * 2) *
-                                              (2 / 3) + btn_width,
-                                              (screen_height - btn_height) / 2,
-                                              'Играть с компьютером', self)
-        self.random_btn = Button((screen_width - btn_width * 2 - 5) / 2,
-                                 top_margin + 10 * cell_size + btn_height,
-                                 'Расставить рандомно', self)
-        self.next_btn = Button((screen_width - btn_width * 2 - 5) / 2 +
-                               btn_width + 10, top_margin + 10 * cell_size +
-                               btn_height, 'Дальше', self)
+        self.start_with_computer_btn = Button('Играть с компьютером', self)
+        self.random_btn = Button('Расставить рандомно', self)
+        self.next_btn = Button('Дальше', self)
+
+        self.minus_btn = Button('-', self)
+        self.plus_btn = Button('+', self)
 
     @staticmethod
-    def draw_button(button, color=BLACK):
-        pygame.draw.rect(screen, color, button.btn_params)
-        screen.blit(font.render(button.title, True, WHITE), button.title_params)
+    def draw_button(button, x_start, y_start, width=btn_width, height=btn_height, color=BLACK):
+        title_params = (x_start + width / 2 - button.title_width / 2,
+                             y_start + height / 2 - button.title_height / 2)
+        pygame.draw.rect(screen, color, (x_start, y_start, width, height))
+        screen.blit(font.render(button.title, True, WHITE), title_params)
+        button.rect = pygame.Rect((x_start, y_start, width, height))
 
     @staticmethod
     def draw_field(offset):
@@ -250,12 +245,58 @@ class DrawManager:
         screen.blit(label, (left_margin + x_offset * cell_size +
                             (10 * cell_size - label_width) / 2, top_margin - label_height + y_offset))
 
+    def draw_start_window(self):
+        self.draw_button(self.start_with_friend_btn, (screen_width - btn_width * 2) / 3,
+                                            (screen_height - btn_height) / 2)
+        self.draw_button(self.start_with_computer_btn, (screen_width - btn_width * 2) *
+                                              (2 / 3) + btn_width,
+                                              (screen_height - btn_height) / 2)
+
+    def draw_field_settings_window(self, field_params):
+        screen.fill(WHITE)
+        self.draw_button(self.minus_btn, left_margin, top_margin, cell_size, cell_size)
+        self.update_param(field_params.field_size, 0)
+        self.draw_button(self.plus_btn, left_margin + 2.5 * cell_size + 20, top_margin, cell_size, cell_size)
+        self.draw_button(self.next_btn, (screen_width - btn_width * 2 - 5) / 2 +
+                               btn_width + 10, top_margin + 10 * cell_size +
+                               btn_height)
+
+    def update_param(self, param, delta):
+        x_rect = left_margin + cell_size + 10
+        y_rect = top_margin
+        pygame.draw.rect(screen, WHITE,
+                         (x_rect, y_rect, cell_size * 1.5, cell_size))
+        pygame.draw.rect(screen, BLACK,
+                         (x_rect, y_rect, cell_size * 1.5, cell_size),
+                         width=2)
+        num = font.render(str(param + delta), True, BLACK)
+        screen.blit(num, (x_rect + 0.5 * cell_size, y_rect + 0.25 * cell_size))
+
     def draw_field_window(self, label):
         screen.fill(WHITE)
         self.draw_field(7.5)
         self.make_label(label, 7.5)
-        self.draw_button(self.next_btn)
-        self.draw_button(self.random_btn)
+        self.draw_button(self.next_btn, (screen_width - btn_width * 2 - 5) / 2 +
+                               btn_width + 10, top_margin + 10 * cell_size +
+                               btn_height)
+        self.draw_button(self.random_btn, (screen_width - btn_width * 2 - 5) / 2,
+                                 top_margin + 10 * cell_size + btn_height)
+
+    @staticmethod
+    def draw_ship(ship, turn, offset):
+        ship.sort(key=lambda i: i[1])
+        x = cell_size * (ship[0][0] - 1) + left_margin + (offset + offset_for_field) * cell_size
+        y = cell_size * (ship[0][
+                             1] - 1) + top_margin + offset_for_field * cell_size
+        if turn == 1:
+            width = cell_size
+            height = cell_size * len(ship)
+
+        else:
+            width = cell_size * len(ship)
+            height = cell_size
+        pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
+                         width=cell_size // 10)
 
     def draw_game_window(self, player1, player2):
         global OFFSETS
@@ -281,22 +322,6 @@ class DrawManager:
         screen.blit(score_label, (x_start, y_start))
 
     @staticmethod
-    def draw_ship(ship, turn, offset):
-        ship.sort(key=lambda i: i[1])
-        x = cell_size * (ship[0][0] - 1) + left_margin + (offset + offset_for_field) * cell_size
-        y = cell_size * (ship[0][
-                             1] - 1) + top_margin + offset_for_field * cell_size
-        if turn == 1:
-            width = cell_size
-            height = cell_size * len(ship)
-
-        else:
-            width = cell_size * len(ship)
-            height = cell_size
-        pygame.draw.rect(screen, BLACK, ((x, y), (width, height)),
-                         width=cell_size // 10)
-
-    @staticmethod
     def put_dots(dots, offset):
         for (x, y) in dots:
             if x < 1 or y < 1 or x > field_size or y > field_size:
@@ -316,45 +341,67 @@ class DrawManager:
 
 
 def main():
-    global offset_for_field, field_size
+    global offset_for_field, field_size, OFFSETS
     field_params = FieldParams(6)
     offset_for_field = field_params.offset
     field_size = field_params.field_size
+
     players = {1: Field(1, field_params),
                2: Field(2, field_params)}
     scores = {2: 0,
               1: 0}
-    offsets = {1: 0,
-               2: 15}
-
+    drawer = DrawManager()
+    shootings = {1: ShootingManager(players[1], drawer),
+                 2: ShootingManager(players[2], drawer)}
     enemy_num = 2
     player_num = 1
 
     game_over = False
     game_start = False
+    field_set_up = False
     first_field_made = False
     second_field_made = False
     ships_created_2 = False
     ships_created_1 = False
+
     screen.fill(WHITE)
-    drawer = DrawManager()
-    drawer.draw_button(drawer.start_with_friend_btn)
-    drawer.draw_button(drawer.start_with_computer_btn)
-    shootings = {1: ShootingManager(players[1], drawer),
-                 2: ShootingManager(players[2], drawer)}
+    drawer.draw_start_window()
 
     while not game_start:
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_start = True
+                field_set_up = True
                 first_field_made = True
                 second_field_made = True
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN and \
                     drawer.start_with_friend_btn.rect.collidepoint(mouse):
                 game_start = True
-                drawer.draw_field_window('Игрок 1')
+                drawer.draw_field_settings_window(field_params)
+        pygame.display.update()
+
+    while not field_set_up:
+        mouse = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                field_set_up = True
+                first_field_made = True
+                second_field_made = True
+                game_over = True
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if drawer.next_btn.rect.collidepoint(mouse):
+                    field_set_up = True
+                    drawer.draw_field_window('Игрок 1')
+                elif drawer.plus_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.field_size, 1)
+                    field_params.field_size += 1
+                elif drawer.minus_btn.rect.collidepoint(mouse):
+                    drawer.update_param(field_params.field_size, -1)
+                    field_params.field_size -= 1
+
+
         pygame.display.update()
 
     while not first_field_made:
@@ -407,7 +454,7 @@ def main():
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                offset = offsets[enemy_num]
+                offset = OFFSETS[enemy_num]
                 enemy = players[enemy_num]
                 if left_margin + (offset + offset_for_field) * cell_size <= x <= left_margin + \
                         (field_size + offset + offset_for_field) * cell_size and top_margin + offset_for_field * cell_size <= y <= \
@@ -419,7 +466,7 @@ def main():
                             enemy.ships[fired_cell][0] is False:
                         scores[player_num] += 1
                         shootings[enemy_num].wounded(fired_cell[0], fired_cell[1])
-                        drawer.update_score(scores[player_num], offsets[player_num])
+                        drawer.update_score(scores[player_num], OFFSETS[player_num])
                         if shootings[enemy_num].is_killed(fired_cell[0], fired_cell[1]):
                             shootings[enemy_num].killed(fired_cell[0], fired_cell[1])
                         if is_winner(player_num):
