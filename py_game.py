@@ -254,6 +254,7 @@ class DrawManager:
     def make_label(text, x_offset, y_offset=-cell_size, color=BLACK):
         label = font.render(text, True, color)
         label_width = label.get_width()
+        print(label_width)
         label_height = label.get_height()
         pygame.draw.rect(screen, WHITE, (left_margin + x_offset * cell_size +
                             (10 * cell_size - label_width) / 2 - label_width * 0.5, top_margin - label_height + y_offset, label_width * 2, label_height))
@@ -272,6 +273,20 @@ class DrawManager:
         screen.fill(WHITE)
 
         self.make_label('Настройте параметры поля', 7.5, 0)
+        self.make_label('Размер поля', 5, 2.2 * cell_size)
+
+        x_start = left_margin + 8 * cell_size
+        y_start = top_margin * 1.5 + 1.5 * cell_size
+
+        for i in range(4, 0, -1):
+            for j in range(i + 1):
+                pygame.draw.line(screen, BLACK, (x_start + j * cell_size, y_start), (x_start + j * cell_size, y_start + cell_size))
+
+            pygame.draw.line(screen, BLACK, (x_start, y_start), (x_start + j * cell_size, y_start))
+            pygame.draw.line(screen, BLACK, (x_start, y_start + cell_size), (x_start + j * cell_size, y_start + cell_size))
+
+            y_start += 1.5 * cell_size
+            x_start += 0.5 * cell_size
 
         x_start = left_margin + 13 * cell_size
         y_start = top_margin * 1.5
@@ -587,8 +602,10 @@ def main():
                         if shootings[enemy_num].is_killed(fired_cell[0], fired_cell[1]):
                             shootings[enemy_num].killed(fired_cell[0], fired_cell[1])
                             sound_killed.play()
+                            drawer.make_label('Убил', 7.5, 12 * cell_size)
                         else:
                             sound_wounded.play()
+                            drawer.make_label('Ранил', 7.5, 12 * cell_size)
                         if is_winner(player_num):
                             drawer.make_label(
                                 'Игрок {0} победил'.format(player_num), 7.5,
@@ -598,6 +615,7 @@ def main():
                             change_turn()
                         shootings[player_num].missed(fired_cell[0], fired_cell[1])
                         sound_missed.play()
+                        drawer.make_label('Промазал', 7.5, 12 * cell_size)
 
         pygame.display.update()
 
