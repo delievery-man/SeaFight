@@ -1,5 +1,7 @@
 import pygame
 import random
+import time
+import sys
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -10,10 +12,10 @@ OFFSETS = {1: 0,
            2: 15}
 offset_for_field = 0
 field_size = 10
-
 cell_size = 30
 left_margin = 60
 top_margin = 90
+GAME_WITH_BOT = False
 
 screen_width, screen_height = left_margin * 2 + cell_size * 25, top_margin * 2 + 40 + cell_size * 10
 print(screen_width)
@@ -29,7 +31,7 @@ font = pygame.font.SysFont('notosans', font_size)
 
 
 class FieldParams:
-    def __init__(self, field_size=10, num_4=1, num_3=0, num_2=0, num_1=0):
+    def __init__(self, field_size=10, num_4=1, num_3=2, num_2=3, num_1=4):
         self.field_size = field_size
         self.num_4 = num_4
         self.num_3 = num_3
@@ -56,16 +58,16 @@ class Field:
             for y in range(1, self.field_size + 1):
                 self.cells_state[(x, y)] = True
 
-    def generate_ships(self, drawer, label):
+    def generate_ships(self, drawer, label, player):
         self.ships = {}
         self.set_cells_state()
-        drawer.draw_field_window(label)
-
+        if player == "human":
+            drawer.draw_field_window(label)
         numbers_of_ships = [self.num_1, self.num_2, self.num_3, self.num_4]
         for i in range(len(numbers_of_ships)):
-            self.generate_ships_by_length(numbers_of_ships[i], i + 1, drawer)
+            self.generate_ships_by_length(numbers_of_ships[i], i + 1, drawer, player)
 
-    def generate_ships_by_length(self, number_of_ships, length, drawer):
+    def generate_ships_by_length(self, number_of_ships, length, drawer, player):
         s = 0
         while s < number_of_ships:
             x = random.randint(1, self.field_size)
@@ -74,7 +76,8 @@ class Field:
             ship = self.make_ship(x, y, turn, length)
             if self.is_ship_can_be_put(ship):
                 self.add_ship(ship)
-                drawer.draw_ship(ship, turn, 7.5)
+                if player == "human":
+                    drawer.draw_ship(ship, turn, 7.5)
                 s += 1
 
     def make_ship(self, x, y, turn, length):
@@ -148,9 +151,9 @@ class ShootingManager:
 
     def wounded(self, x, y):
         self.drawer.put_cross(cell_size * (x - 1 + self.__offset + offset_for_field) + left_margin,
-                         cell_size * (y - 1 + offset_for_field) + top_margin)
+                              cell_size * (y - 1 + offset_for_field) + top_margin)
         self.drawer.put_dots([(x + 1, y + 1), (x - 1, y - 1), (x + 1, y - 1),
-                         (x - 1, y + 1)], self.__offset)
+                              (x - 1, y + 1)], self.__offset)
         self.player.ships[(x, y)] = (True, self.player.ships[(x, y)][1])
 
     def is_killed(self, x, y):
@@ -166,13 +169,13 @@ class ShootingManager:
 
     def killed(self, x, y):
         self.drawer.put_cross(cell_size * (x - 1 + self.__offset + offset_for_field) +
-                         left_margin, cell_size * (y - 1 + offset_for_field) +
-                         top_margin, RED)
+                              left_margin, cell_size * (y - 1 + offset_for_field) +
+                              top_margin, RED)
         neighbours = self.player.ships[(x, y)][1]
         for neighbour in neighbours:
             self.drawer.put_cross(cell_size * (neighbour[0] - 1 + self.__offset + offset_for_field) +
-                             left_margin, cell_size * (neighbour[1] - 1 + offset_for_field) +
-                             top_margin, RED)
+                                  left_margin, cell_size * (neighbour[1] - 1 + offset_for_field) +
+                                  top_margin, RED)
         dots = []
         ship = [n for n in neighbours]
         ship.append((x, y))
@@ -218,11 +221,13 @@ class DrawManager:
         letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
         for i in range(field_size + 1):
             pygame.draw.line(screen, BLACK,
-                             (left_margin + (offset + offset_for_field) * cell_size, top_margin + (i + offset_for_field) *
+                             (left_margin + (offset + offset_for_field) * cell_size,
+                              top_margin + (i + offset_for_field) *
                               cell_size), (left_margin + (offset + field_size + offset_for_field) * cell_size,
                                            top_margin + (i + offset_for_field) * cell_size))
             pygame.draw.line(screen, BLACK,
-                             (left_margin + (i + offset + offset_for_field) * cell_size, top_margin + offset_for_field * cell_size),
+                             (left_margin + (i + offset + offset_for_field) * cell_size,
+                              top_margin + offset_for_field * cell_size),
                              (left_margin + (i + offset + offset_for_field) * cell_size,
                               top_margin + (field_size + offset_for_field) * cell_size))
 
@@ -235,7 +240,8 @@ class DrawManager:
                 let_width = let.get_width()
 
                 screen.blit(num, (left_margin - (cell_size // 2 + num_width // 2) +
-                                  (offset + offset_for_field) * cell_size, top_margin + (i + offset_for_field) * cell_size +
+                                  (offset + offset_for_field) * cell_size,
+                                  top_margin + (i + offset_for_field) * cell_size +
                                   (cell_size // 2 - num_height // 2)))
 
                 screen.blit(let, (left_margin + (i + offset_for_field) * cell_size +
@@ -315,9 +321,29 @@ class DrawManager:
                          (x_start + cell_size, y_start), cell_size // 10)
 
 
+class Bot:
+    def __init__(self, difficulty):
+        self.level = difficulty
+
+    def do_shot(self, field_size, enemy):
+        return (random.randint(1, field_size), random.randint(1, field_size))
+
+
+def get_fired_cell(x, y, offset):
+    return (int((x - left_margin) // cell_size + 1 - offset - offset_for_field),
+            int((y - top_margin) // cell_size + 1 - offset_for_field))
+
+
+def shot_is_correct(x, y, offset):
+    return left_margin + (offset + offset_for_field) * cell_size <= x <= left_margin + \
+           (
+                   field_size + offset + offset_for_field) * cell_size and top_margin + offset_for_field * cell_size <= y <= \
+           top_margin + (field_size + offset_for_field) * cell_size
+
+
 def main():
     global offset_for_field, field_size
-    field_params = FieldParams(6)
+    field_params = FieldParams(10)
     offset_for_field = field_params.offset
     field_size = field_params.field_size
     players = {1: Field(1, field_params),
@@ -344,6 +370,7 @@ def main():
                  2: ShootingManager(players[2], drawer)}
 
     while not game_start:
+        global GAME_WITH_BOT
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -352,11 +379,21 @@ def main():
                 second_field_made = True
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    drawer.start_with_friend_btn.rect.collidepoint(mouse):
+                    (drawer.start_with_friend_btn.rect.collidepoint(mouse)):
                 game_start = True
                 drawer.draw_field_window('Игрок 1')
+            elif event.type == pygame.MOUSEBUTTONDOWN and \
+                    (drawer.start_with_computer_btn.rect.collidepoint(mouse)):
+                game_start = True
+                GAME_WITH_BOT = True
+                drawer.draw_field_window('Ваши корабли')
+
         pygame.display.update()
 
+    second_player = "Игрок 2"
+
+    if GAME_WITH_BOT:
+        second_player = "БОТ"
     while not first_field_made:
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
@@ -367,15 +404,19 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN and \
                     drawer.next_btn.rect.collidepoint(mouse) and ships_created_1:
                 first_field_made = True
-                drawer.draw_field_window('Игрок 2')
+                if not GAME_WITH_BOT:
+                    drawer.draw_field_window('Игрок 2')
+                else:
+                    drawer.draw_game_window('Вы', second_player)
+                    players[2].generate_ships(drawer, second_player, 'bot')
             elif event.type == pygame.MOUSEBUTTONDOWN \
                     and drawer.random_btn.rect.collidepoint(mouse):
-                players[1].generate_ships(drawer, 'Игрок 1')
+                players[1].generate_ships(drawer, 'Ваши кораблии', 'human')
 
                 ships_created_1 = True
         pygame.display.update()
 
-    while not second_field_made:
+    while not second_field_made and not GAME_WITH_BOT:
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -383,38 +424,52 @@ def main():
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN and drawer.next_btn.rect.collidepoint(mouse) and ships_created_2:
                 second_field_made = True
-                drawer.draw_game_window('Игрок 1', 'Игрок 2')
+
+                drawer.draw_game_window('Игрок 1', second_player)
+
             elif event.type == pygame.MOUSEBUTTONDOWN \
                     and drawer.random_btn.rect.collidepoint(mouse):
-                players[2].generate_ships(drawer, 'Игрок 2')
+                players[2].generate_ships(drawer, second_player)
 
                 ships_created_2 = True
+
         pygame.display.update()
 
     for p in players.values():
         p.set_cells_state()
 
     def change_turn():
-        nonlocal player_num, enemy_num
+        nonlocal player_num, enemy_num, bot_turn
         player_num, enemy_num = enemy_num, player_num
+        if GAME_WITH_BOT:
+            bot_turn = not bot_turn
 
     def is_winner(player):
         return scores[player] == 20
 
+    bot_turn = False
+    if GAME_WITH_BOT:
+        bot = Bot(1)
+
     while not game_over:
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = event.pos
+
+            elif event.type == pygame.MOUSEBUTTONDOWN or bot_turn:
                 offset = offsets[enemy_num]
                 enemy = players[enemy_num]
-                if left_margin + (offset + offset_for_field) * cell_size <= x <= left_margin + \
-                        (field_size + offset + offset_for_field) * cell_size and top_margin + offset_for_field * cell_size <= y <= \
-                        top_margin + (field_size + offset_for_field) * cell_size:
-                    fired_cell = (int((x - left_margin) // cell_size + 1 - offset - offset_for_field),
-                                  int((y - top_margin) // cell_size + 1 - offset_for_field))
-                    print(fired_cell)
+                fired_cell = (0, 0)
+
+                if bot_turn:
+                    time.sleep(0.5)
+                    fired_cell = bot.do_shot(field_size, enemy)
+                else:
+                    x, y = event.pos
+                    if shot_is_correct(x, y, offset):
+                        fired_cell = get_fired_cell(x, y, offset)
+                if fired_cell is not (0, 0):
                     if fired_cell in enemy.ships and \
                             enemy.ships[fired_cell][0] is False:
                         scores[player_num] += 1
@@ -427,9 +482,9 @@ def main():
                                 'Игрок {0} победил'.format(player_num), 7.5,
                                 12 * cell_size, RED)
                     elif fired_cell not in enemy.ships:
-                        if enemy.cells_state[fired_cell] is True:
-                            change_turn()
-                        shootings[player_num].missed(fired_cell[0], fired_cell[1])
+                            if enemy.cells_state[fired_cell] is True:
+                                change_turn()
+                            shootings[player_num].missed(fired_cell[0], fired_cell[1])
 
         pygame.display.update()
 
