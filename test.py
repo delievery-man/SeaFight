@@ -351,10 +351,10 @@ class Bot:
             crd_rec = filter(lambda x: 1 <= x[0] <= 10 and 1 <= x[1] <= 10, crd_rec)
             crd_rec = filter(lambda x: (x[0], x[1]) in available, crd_rec)
             self.recommendation.extend(crd_rec)
-            if len(self.recommendation) == 0:
-                target = random.choice(available)
-            else:
-                target = self.recommendation.pop()
+            # if len(self.recommendation) == 0:
+            #     target = random.choice(available)
+            # else:
+            target = self.recommendation.pop()
 
         else:
             target = random.choice(available)
@@ -535,17 +535,19 @@ def main():
 
         pygame.display.update()
     finish = False
+    drawer.make_label(
+        'Игрок {0} победил'.format(winner), 7.5,
+        12 * cell_size, RED)
     while not finish:
 
         for event in pygame.event.get():
+
             if event.type == pygame.QUIT:
                 finish = True
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 finish = True
-                drawer.make_label(
-                    'Игрок {0} победил'.format(winner), 7.5,
-                    12 * cell_size, RED)
-                pygame.time.delay(5000)
+
+        pygame.display.update()
 
 
 
