@@ -6,7 +6,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 GREEN = (0, 153, 153)
-GAME_WITH_BOT = False
+GAME_WITH_BOT = True
 OFFSETS = {1: 0,
            2: 15}
 offset_for_field = 0
@@ -395,6 +395,41 @@ class DrawManager:
         pygame.draw.line(screen, color, (x_start, y_start + cell_size),
                          (x_start + cell_size, y_start), cell_size // 10)
 
+class Bot:
+    def __init__(self, difficulty):
+        self.level = difficulty
+        self.last_shot_good = False
+        self.last_shot = (0, 0)
+        self.last_good_shot = (0,0)
+        self.recommendation = []
+        self.killed = False
+
+    def do_shot(self, field_size, enemy):
+        target = ()
+        available = []
+        for key in enemy.cells_state.keys():
+            if enemy.cells_state[key]:
+                available.append(key)
+        self.last_shot_good = self.last_shot in enemy.ships
+        if self.last_good_shot != (0, 0) and not self.killed:
+            crd = self.last_good_shot
+            crd_rec = [[crd[0] - 1, crd[1]], [crd[0] + 1, crd[1]], [crd[0], crd[1] - 1], [crd[0], crd[1] + 1]]
+            crd_rec = filter(lambda x: 1 <= x[0] <= enemy.field_size and 1 <= x[1] <= enemy.field_size, crd_rec)
+            crd_rec = filter(lambda x: (x[0], x[1]) in available, crd_rec)
+            self.recommendation.extend(crd_rec)
+            # if len(self.recommendation) == 0:
+            #     target = random.choice(available)
+            # else:
+            target = self.recommendation.pop()
+
+        else:
+            target = random.choice(available)
+        if self.killed:
+            self.recommendation = []
+            self.last_good_shot = (0, 0)
+
+
+        return target[0], target[1]
 
 def main():
     global offset_for_field, field_size, OFFSETS
@@ -425,6 +460,10 @@ def main():
                 game_over = True
             elif event.type == pygame.MOUSEBUTTONDOWN and \
                     drawer.start_with_friend_btn.rect.collidepoint(mouse):
+                game_start = True
+                drawer.draw_field_settings_window(field_params)
+            elif event.type == pygame.MOUSEBUTTONDOWN and \
+                    drawer.start_with_computer_btn.rect.collidepoint(mouse):
                 game_start = True
                 drawer.draw_field_settings_window(field_params)
         pygame.display.update()
@@ -576,8 +615,10 @@ def main():
         p.set_cells_state()
 
     def change_turn():
-        nonlocal player_num, enemy_num
+        nonlocal player_num, enemy_num, bot_turn
         player_num, enemy_num = enemy_num, player_num
+        if GAME_WITH_BOT:
+            bot_turn = not bot_turn
 
     def is_winner(player):
         return scores[player] == field_params.num_4 * 4 + \
@@ -594,47 +635,65 @@ def main():
     sound_wounded.set_volume(2)
     sound_killed = pygame.mixer.Sound('killed-shot.mp3')
     sound_wounded.set_volume(1.3)
-    if not GAME_WITH_BOT:
-        # -----------------------------PLAY PvP------------------------------------------------------------------
-        while not game_over:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    game_over = True
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+
+    bot_turn = False
+    if GAME_WITH_BOT:
+        bot = Bot(1)
+
+    while not game_over:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_over = True
+            elif event.type == pygame.MOUSEBUTTONDOWN or bot_turn:
+
+                offset = OFFSETS[enemy_num]
+                enemy = players[enemy_num]
+                fired_cell = (0, 0)
+                if bot_turn:
+                    fired_cell = bot.do_shot(field_size, enemy)
+                else:
                     x, y = event.pos
-                    offset = OFFSETS[enemy_num]
-                    enemy = players[enemy_num]
                     if left_margin + (offset + offset_for_field) * cell_size <= x <= left_margin + \
                             (
                                     field_size + offset + offset_for_field) * cell_size and top_margin + offset_for_field * cell_size <= y <= \
                             top_margin + (field_size + offset_for_field) * cell_size:
                         fired_cell = (int((x - left_margin) / cell_size + 1 - offset - offset_for_field),
                                       int((y - top_margin) / cell_size + 1 - offset_for_field))
-                        print(fired_cell)
-                        if fired_cell in enemy.ships and \
-                                enemy.ships[fired_cell][0] is False:
-                            scores[player_num] += 1
-                            shootings[enemy_num].wounded(fired_cell[0], fired_cell[1])
-                            drawer.update_score(scores[player_num], OFFSETS[player_num])
-                            if shootings[enemy_num].is_killed(fired_cell[0], fired_cell[1]):
-                                shootings[enemy_num].killed(fired_cell[0], fired_cell[1])
-                                sound_killed.play()
-                                drawer.make_label('Убил', 7.5, 12 * cell_size)
-                            else:
-                                sound_wounded.play()
-                                drawer.make_label('Ранил', 7.5, 12 * cell_size)
-                            if is_winner(player_num):
-                                drawer.make_label(
-                                    'Игрок {0} победил'.format(player_num), 7.5,
-                                    12 * cell_size, RED)
-                        elif fired_cell not in enemy.ships:
-                            if enemy.cells_state[fired_cell] is True:
-                                change_turn()
-                                shootings[player_num].missed(fired_cell[0], fired_cell[1])
-                                sound_missed.play()
-                                drawer.make_label('Промазал', 7.5, 12 * cell_size)
+                    print(fired_cell)
+                if fired_cell != (0, 0):
+                    if fired_cell in enemy.ships and \
+                            enemy.ships[fired_cell][0] is False:
+                        if bot_turn:
+                            bot.last_good_shot = fired_cell
+                        enemy.cells_state[fired_cell] = False
+                        scores[player_num] += 1
+                        shootings[enemy_num].wounded(fired_cell[0], fired_cell[1])
+                        if bot_turn:
+                            bot.killed = False
+                        drawer.update_score(scores[player_num], OFFSETS[player_num])
 
-            pygame.display.update()
+                        if shootings[enemy_num].is_killed(fired_cell[0], fired_cell[1]):
+                            if bot_turn:
+                                bot.killed = True
+                                bot.last_good_shot = (0, 0)
+                            shootings[enemy_num].killed(fired_cell[0], fired_cell[1])
+                            sound_killed.play()
+                            drawer.make_label('Убил', 7.5, 12 * cell_size)
+                        else:
+                            sound_wounded.play()
+                            drawer.make_label('Ранил', 7.5, 12 * cell_size)
+                        if is_winner(player_num):
+                            drawer.make_label(
+                                'Игрок {0} победил'.format(player_num), 7.5,
+                                12 * cell_size, RED)
+                    elif fired_cell not in enemy.ships:
+                        if enemy.cells_state[fired_cell] is True:
+                            change_turn()
+                            shootings[player_num].missed(fired_cell[0], fired_cell[1])
+                            sound_missed.play()
+                            drawer.make_label('Промазал', 7.5, 12 * cell_size)
+
+        pygame.display.update()
 
 
 
