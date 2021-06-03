@@ -425,7 +425,7 @@ class Game:
         y_start = 2 * ui.top_margin
         x_start_right = ui.left_margin + 33.5 * ui.cell_size + 10
         x_start_left = ui.left_margin + 21.5 * ui.cell_size + 10
-        koef = {14: 0, 13: 1.5, 12: 3, 11: 4.5, 10: 6, 9: 7.5, 8: 9, 7: 10.5, 6: 0, 5: 1.5, 4: 3, 3: 4.5, 2: 6, 1: 7.5, 0:9.5}
+        koef = {14: 0, 13: 1.5, 12: 3, 11: 4.5, 10: 6, 9: 7.5, 8: 9, 7: 10.5, 6: 0, 5: 1.5, 4: 3, 3: 4.5, 2: 6, 1: 7.5, 0:9}
         for i in range(len(ui.minus_plus_buttons)):
             minus_btn = ui.minus_plus_buttons[i][0]
             plus_btn = ui.minus_plus_buttons[i][1]
