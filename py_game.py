@@ -422,7 +422,7 @@ class Game:
         for i in range(len(self.field_params.nums_of_ships)):
             total += self.field_params.nums_of_ships[i] * i + 1
         return total >= (self.field_params.field_size *
-                         self.field_params.field_size) / 3
+                         self.field_params.field_size) / 2
 
     def check_buttons(self, mouse):
         y_start = 2 * ui.top_margin
