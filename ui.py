@@ -61,7 +61,6 @@ class DrawManager:
         button.rect = pygame.Rect((x_start, y_start, width, height))
 
     def draw_field(self, offset):
-        print(self.field_size)
         for i in range(self.field_size + 1):
             pygame.draw.line(self.screen, BLACK,
                              (left_margin + (offset + self.offset_for_field)
@@ -122,6 +121,7 @@ class DrawManager:
                                  top_margin - label_height + y_offset))
 
     def draw_start_window(self):
+        self.screen.fill(WHITE)
         self.draw_button(start_with_friend_btn,
                          (screen_width - btn_width * 2) / 3,
                          (screen_height - btn_height) / 2)
@@ -172,7 +172,6 @@ class DrawManager:
 
     def draw_field_settings_window(self):
         self.screen.fill(WHITE)
-
         self.make_label('Настройте параметры поля', 7.5, 0)
         self.make_label('Размер поля', 5, 2.2 * cell_size)
 
@@ -199,9 +198,8 @@ class DrawManager:
         self.draw_params_labels()
 
         self.draw_button(next_btn,
-                         (screen_width - btn_width * 2 - 5) / 2 +
-                         btn_width + 10, top_margin + 10 * cell_size +
-                         btn_height)
+                         screen_width - left_margin - btn_width,
+                         top_margin + 10 * cell_size + btn_height)
 
     def update_param(self, param, delta, x_start, y_start):
         rect_params = (x_start, y_start, cell_size, cell_size)
@@ -214,19 +212,19 @@ class DrawManager:
 
     def draw_field_window(self, label):
         self.screen.fill(WHITE)
-        self.draw_field(4)
+        self.draw_field(7.5)
         self.make_label(label, 7.5)
-        self.draw_button(next_btn, (screen_width - btn_width * 2 - 5) / 2 +
-                         2 * btn_width + 20, top_margin + 10 * cell_size +
+        self.draw_button(next_btn, screen_width - left_margin - btn_width,
+                         top_margin + 10 * cell_size +
                          btn_height)
-        self.draw_button(manual_btn, left_margin + cell_size *
-                         (self.field_size + 5), top_margin)
-        self.draw_button(random_btn, left_margin + cell_size *
-                         (self.field_size + 5), top_margin + 1.5 * btn_height)
-        self.draw_button(cancel_btn, left_margin + cell_size *
-                         (self.field_size + 5), top_margin + 3 * btn_height)
-        self.draw_button(clear_btn, left_margin + cell_size *
-                         (self.field_size + 5), top_margin + 4.5 * btn_height)
+        self.draw_button(manual_btn, screen_width - left_margin - btn_width,
+                         top_margin)
+        self.draw_button(random_btn, screen_width - left_margin - btn_width,
+                         top_margin + 1.5 * btn_height)
+        self.draw_button(cancel_btn, screen_width - left_margin - btn_width,
+                         top_margin + 3 * btn_height)
+        self.draw_button(clear_btn, screen_width - left_margin - btn_width,
+                         top_margin + 4.5 * btn_height)
 
     def draw_ship(self, ship, turn, offset):
         ship.sort(key=lambda i: i[1])
@@ -285,6 +283,24 @@ class DrawManager:
         pygame.draw.line(self.screen, color, (x_start, y_start + cell_size),
                          (x_start + cell_size, y_start), cell_size // 10)
 
+    def draw_win_window(self, label):
+        self.screen.fill(WHITE)
+        self.make_label(label, 7.5, color=RED)
+        self.draw_button(restart_btn, (screen_width - btn_width) / 2,
+                         (screen_height - btn_height) / 2)
+
+    def draw_levels_window(self):
+        self.screen.fill(WHITE)
+        self.make_label('Выберите уровень сложности', 7.5)
+        y_start = (screen_height - 3 * btn_height - 2 * cell_size) / 2
+        self.draw_button(level_1_btn, (screen_width - btn_width) / 2,
+                         y_start)
+        self.draw_button(level_2_btn, (screen_width - btn_width) / 2,
+                         y_start + btn_height + cell_size)
+        self.draw_button(level_3_btn, (screen_width - btn_width) / 2,
+                         y_start + 2 * btn_height + 2 * cell_size)
+
+
 
 start_with_friend_btn = Button('Играть с другом')
 start_with_computer_btn = Button('Играть с компьютером')
@@ -293,6 +309,10 @@ manual_btn = Button('Нарисовать')
 next_btn = Button('Дальше')
 clear_btn = Button('Стереть всё')
 cancel_btn = Button('Отмена')
+restart_btn = Button('Начать заново')
+level_1_btn = Button('Лёгкий уровень')
+level_2_btn = Button('Средний уровень')
+level_3_btn = Button('Сложный уровень')
 
 minus_size_btn = Button('-')
 plus_size_btn = Button('+')

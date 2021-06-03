@@ -15,9 +15,15 @@ class FieldParams:
         self.nums_of_ships = [i for i in numbers]
         if len(numbers) == 0:
             self.nums_of_ships = [4, 3, 2, 1, 0, 0, 0, 0, 0, 0]
-        self.offset = (10 - size) / 2
+        self.offset = 0
         self.max_score = 0
         self.total = 0
+        self.update_params()
+
+    def update_params(self):
+        self.offset = (10 - self.field_size) / 2
+        self.total = 0
+        self.max_score = 0
         for i in range(len(self.nums_of_ships)):
             self.total += self.nums_of_ships[i]
             self.max_score += self.nums_of_ships[i] * (i + 1)
@@ -40,11 +46,14 @@ class Field:
     def generate_ships(self, drawer, label):
         self.ships = {}
         self.set_cells_state()
+        self.ships_to_draw = []
         drawer.draw_field_window(label)
         for i in range(len(self.nums_of_ships)):
             self.generate_ships_by_length(self.nums_of_ships[i], i + 1, drawer)
+        for ship in self.ships_to_draw:
+            drawer.draw_ship(ship[0], ship[1], 7.5)
 
-    def generate_ships_by_length(self, number_of_ships, length, drawer):
+    def generate_ships_by_length(self, number_of_ships, length):
         s = 0
         while s < number_of_ships:
             x = random.randint(1, self.field_size)
@@ -53,7 +62,7 @@ class Field:
             ship = self.make_ship(x, y, turn, length)
             if self.is_ship_can_be_put(ship):
                 self.add_ship(ship)
-                drawer.draw_ship(ship, turn, 4)
+                self.ships_to_draw.append((ship, turn))
                 s += 1
 
     def make_ship(self, x, y, turn, length):
@@ -141,7 +150,16 @@ class Bot:
         self.field = Field(field_params)
         self.score = 0
 
-    def do_shot(self, enemy):
+    def do_shot(self, enemy, level):
+        if level == 2:
+            target = self.do_shot_level_2(enemy)
+        elif level == 1:
+            target = self.do_shot_level_1(enemy)
+        else:
+            target = self.do_shot_level_3(enemy)
+        return target[0], target[1]
+
+    def do_shot_level_2(self, enemy):
         available = []
         for key in enemy.field.cells_state.keys():
             if enemy.field.cells_state[key]:
@@ -152,8 +170,8 @@ class Bot:
             crd_rec = [[crd[0] - 1, crd[1]], [crd[0] + 1, crd[1]],
                        [crd[0], crd[1] - 1], [crd[0], crd[1] + 1]]
             crd_rec = filter(lambda x: 1 <= x[0] <=
-                             enemy.field.field_size and
-                             1 <= x[1] <= enemy.field.field_size,
+                                       enemy.field.field_size and
+                                       1 <= x[1] <= enemy.field.field_size,
                              crd_rec)
             crd_rec = filter(lambda x: (x[0], x[1]) in available, crd_rec)
             self.recommendation.extend(crd_rec)
@@ -161,14 +179,25 @@ class Bot:
                 target = random.choice(available)
             else:
                 target = self.recommendation.pop()
-
         else:
             target = random.choice(available)
         if self.killed:
             self.recommendation = []
             self.last_good_shot = (0, 0)
 
-        return target[0], target[1]
+        return target
+
+    def do_shot_level_1(self, enemy):
+        available = []
+        for key in enemy.field.cells_state.keys():
+            if enemy.field.cells_state[key]:
+                available.append(key)
+        return random.choice(available)
+
+    def do_shot_level_3(self, enemy):
+        for key in enemy.field.ships.keys():
+            if enemy.field.ships[key][0] is False:
+                return key
 
 
 class ShootingManager:
@@ -244,612 +273,607 @@ class ShootingManager:
         self.drawer.put_dots(dots, self.__offset)
 
 
-def main():
-    global GAME_WITH_BOT, offset_for_field, field_size
+class Game:
+    def __init__(self):
+        self.game_start = False
+        self.level_chosen = False
+        self.field_set_up = False
+        self.field_made = False
+        self.ships_created = False
+        self.bot_turn = False
+        self.game_over = False
+        self.game_finished = False
 
-    field_params = FieldParams()
+        self.field_params = FieldParams()
+        self.drawer = DrawManager(self.field_params)
+        self.labels = {}
+        self.players = {}
+        self.shootings = {}
+        self.level = 0
+        self.enemy_num = 2
+        self.player_num = 1
+        self.ships_to_draw = []
+        self.drawn_ships = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-    drawer = DrawManager(field_params)
+    def new_game(self):
+        self.game_start = False
+        self.level_chosen = False
+        self.field_set_up = False
+        self.field_made = False
+        self.ships_created = False
+        self.bot_turn = False
+        self.game_over = False
+        self.game_finished = False
+        self.field_params = FieldParams()
+        self.drawer = DrawManager(self.field_params)
+        self.choose_mode()
+        self.choose_level()
+        self.setLabels()
+        self.setup_field()
+        self.setPlayers()
+        self.setShootings()
+        self.enemy_num = 2
+        self.player_num = 1
+        self.ships_to_draw = []
+        self.drawn_ships = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.create_field(1)
+        for p in self.players.values():
+            p.field.set_cells_state()
+        self.play()
+        self.finish()
 
-    game_over = False
-    game_start = False
-    field_set_up = False
-    first_field_made = False
-    second_field_made = False
-    drawing = False
-    can_draw = False
-    ships_created_2 = False
-    ships_created_1 = False
+    def setLabels(self):
+        if GAME_WITH_BOT:
+            self.labels = {1: 'Ваше поле',
+                           2: 'Поле компьютера'}
+        else:
+            self.labels = {1: 'Игрок 1',
+                           2: 'Игрок 2'}
 
-    ui.screen.fill(ui.WHITE)
-    drawer.draw_start_window()
+    def setPlayers(self):
+        if GAME_WITH_BOT:
+            self.players = {1: Player(self.field_params),
+                            2: Bot(1, self.field_params)}
+        else:
+            self.players = {1: Player(self.field_params),
+                            2: Player(self.field_params)}
 
-    while not game_start:
-        mouse = pygame.mouse.get_pos()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                game_start = True
-                field_set_up = True
-                first_field_made = True
-                second_field_made = True
-                game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.start_with_friend_btn.rect.collidepoint(mouse):
-                game_start = True
-                drawer.draw_field_settings_window()
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.start_with_computer_btn.rect.collidepoint(mouse):
-                GAME_WITH_BOT = True
-                game_start = True
-                drawer.draw_field_settings_window()
-        pygame.display.update()
+    def setShootings(self):
+        self.shootings = {1: ShootingManager(1, self.players[1], self.drawer),
+                          2: ShootingManager(2, self.players[2], self.drawer)}
 
-    def are_params_correct():
-        return not zero_ships() and field_params.field_size > 0 and \
-               not too_many_ships()
+    def choose_mode(self):
+        global GAME_WITH_BOT
+        self.drawer.draw_start_window()
+        while not self.game_start:
+            mouse = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.game_start = True
+                    self.field_set_up = True
+                    self.field_made = True
+                    self.game_over = True
+                    self.game_finished = True
+                    self.level_chosen = True
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        ui.start_with_friend_btn.rect.collidepoint(mouse):
+                    self.game_start = True
+                    self.level_chosen = True
+                    self.drawer.draw_field_settings_window()
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        ui.start_with_computer_btn.rect.collidepoint(mouse):
+                    GAME_WITH_BOT = True
+                    self.game_start = True
+                    self.drawer.draw_levels_window()
+            pygame.display.update()
 
-    def zero_ships():
-        for num in field_params.nums_of_ships:
+    def choose_level(self):
+        while not self.level_chosen:
+            mouse = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.level_chosen = True
+                    self.field_set_up = True
+                    self.field_made = True
+                    self.ships_created = True
+                    self.game_over = True
+                    self.game_finished = True
+                elif event.type == pygame.MOUSEBUTTONDOWN \
+                        and ui.level_1_btn.rect.collidepoint(mouse):
+                    self.level = 1
+                    self.level_chosen = True
+                    self.drawer.draw_field_settings_window()
+                elif event.type == pygame.MOUSEBUTTONDOWN \
+                        and ui.level_2_btn.rect.collidepoint(mouse):
+                    self.level = 2
+                    self.level_chosen = True
+                    self.drawer.draw_field_settings_window()
+                elif event.type == pygame.MOUSEBUTTONDOWN \
+                        and ui.level_3_btn.rect.collidepoint(mouse):
+                    self.level = 3
+                    self.level_chosen = True
+                    self.drawer.draw_field_settings_window()
+            pygame.display.update()
+
+    def are_params_correct(self):
+        return not self.zero_ships() and self.field_params.field_size > 0 and \
+               not self.too_many_ships()
+
+    def zero_ships(self):
+        for num in self.field_params.nums_of_ships:
             if num != 0:
                 return False
         return True
 
-    def too_many_ships():
+    def too_many_ships(self):
         total = 0
-        for i in range(len(field_params.nums_of_ships)):
-            total += field_params.nums_of_ships[i] * i + 1
-        return total >= (field_params.field_size * field_params.field_size) / 3
+        for i in range(len(self.field_params.nums_of_ships)):
+            total += self.field_params.nums_of_ships[i] * i + 1
+        return total >= (self.field_params.field_size *
+                         self.field_params.field_size) / 3
 
-    if GAME_WITH_BOT:
-        labels = {1: 'Ваше поле',
-                  2: 'Поле компьютера'}
-    else:
-        labels = {1: 'Игрок 1',
-                  2: 'Игрок 2'}
-
-    y_start = ui.top_margin * 1.5
-    x_start_right = ui.left_margin + 21.5 * ui.cell_size + 10
-    x_start_left = ui.left_margin + 11.5 * ui.cell_size + 10
-    while not field_set_up:
-        mouse = pygame.mouse.get_pos()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                field_set_up = True
-                first_field_made = True
-                second_field_made = True
-                game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if ui.next_btn.rect.collidepoint(mouse):
-                    if are_params_correct():
-                        field_set_up = True
-                        offset_for_field = field_params.offset
-                        field_size = field_params.field_size
-                        drawer = DrawManager(field_params)
-                        drawer.draw_field_window(labels[1])
-                    else:
-                        if field_params.field_size == 0:
-                            drawer.make_label(
-                                'Размер поля должен быть больше 0',
-                                7.5, 11 * ui.cell_size, ui.RED)
-                        elif zero_ships():
-                            drawer.make_label(
-                                'Слишком мало кораблей',
-                                7.5, 11 * ui.cell_size, ui.RED)
-                        elif too_many_ships():
-                            drawer.make_label(
-                                'Уменьшите количество кораблей',
-                                7.5, 11 * ui.cell_size, ui.RED)
-
-                elif ui.plus_size_btn.rect.collidepoint(mouse):
-                    if field_params.field_size == 10:
-                        continue
-                    drawer.update_param(field_params.field_size, 1,
-                                        ui.left_margin + 10 + 13 *
-                                        ui.cell_size,
-                                        y_start)
-                    field_params.field_size += 1
-
-                elif ui.minus_size_btn.rect.collidepoint(mouse):
-                    if field_params.field_size == 2:
-                        continue
-                    drawer.update_param(field_params.field_size, -1,
-                                        ui.left_margin + 10 + 13 *
-                                        ui.cell_size,
-                                        y_start)
-                    field_params.field_size -= 1
-
-                elif ui.plus_4_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 4:
-                        drawer.make_label(
-                            '4-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[3], 1,
-                                        x_start_right, y_start + 3 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[3] += 1
-                elif ui.minus_4_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[3] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[3], -1,
-                                        x_start_right, y_start + 3 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[3] -= 1
-
-                elif ui.plus_3_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 3:
-                        drawer.make_label(
-                            '3-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[2], 1,
-                                        x_start_right, y_start + 4.5 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[2] += 1
-                elif ui.minus_3_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[2] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[2], -1,
-                                        x_start_right, y_start + 4.5 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[2] -= 1
-
-                elif ui.plus_2_btn.rect.collidepoint(mouse):
-                    drawer.update_param(field_params.nums_of_ships[1], 1,
-                                        x_start_right, y_start + 6 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[1] += 1
-                elif ui.minus_2_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[1] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[1], -1,
-                                        x_start_right, y_start + 6 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[1] -= 1
-
-                elif ui.plus_1_btn.rect.collidepoint(mouse):
-                    drawer.update_param(field_params.nums_of_ships[0], 1,
-                                        x_start_right,
-                                        y_start + 7.5 * ui.cell_size)
-                    field_params.nums_of_ships[0] += 1
-                elif ui.minus_1_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[0] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[0], -1,
-                                        x_start_right, y_start + 7.5 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[0] -= 1
-
-                elif ui.plus_5_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 5:
-                        drawer.make_label(
-                            '5-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[4], 1,
-                                        x_start_right,
-                                        y_start + 1.5 * ui.cell_size)
-                    field_params.nums_of_ships[4] += 1
-                elif ui.minus_5_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[4] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[4], -1,
-                                        x_start_right, y_start + 1.5 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[4] -= 1
-
-                elif ui.plus_10_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 10:
-                        drawer.make_label(
-                            '10-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[9], 1,
-                                        x_start_left,
-                                        y_start + 1.5 * ui.cell_size)
-                    field_params.nums_of_ships[9] += 1
-                elif ui.minus_10_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[9] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[9], -1,
-                                        x_start_left, y_start + 1.5 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[9] -= 1
-
-                elif ui.plus_9_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 9:
-                        drawer.make_label(
-                            '9-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[8], 1,
-                                        x_start_left,
-                                        y_start + 3 * ui.cell_size)
-                    field_params.nums_of_ships[8] += 1
-                elif ui.minus_9_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[8] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[8], -1,
-                                        x_start_left, y_start + 3 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[8] -= 1
-
-                elif ui.plus_8_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 8:
-                        drawer.make_label(
-                            '8-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[7], 1,
-                                        x_start_left,
-                                        y_start + 4.5 * ui.cell_size)
-                    field_params.nums_of_ships[7] += 1
-                elif ui.minus_8_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[7] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[7], -1,
-                                        x_start_left, y_start + 4.5 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[7] -= 1
-
-                elif ui.plus_7_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 7:
-                        drawer.make_label(
-                            '7-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[6], 1,
-                                        x_start_left,
-                                        y_start + 6 * ui.cell_size)
-                    field_params.nums_of_ships[6] += 1
-                elif ui.minus_7_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[6] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[6], -1,
-                                        x_start_left, y_start + 6 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[6] -= 1
-
-                elif ui.plus_6_btn.rect.collidepoint(mouse):
-                    if field_params.field_size < 6:
-                        drawer.make_label(
-                            '6-палубный корабль не влезет на поле',
-                            7.5, 11 * ui.cell_size, ui.RED)
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[5], 1,
-                                        x_start_left,
-                                        y_start + 7.5 * ui.cell_size)
-                    field_params.nums_of_ships[5] += 1
-                elif ui.minus_6_btn.rect.collidepoint(mouse):
-                    if field_params.nums_of_ships[5] == 0:
-                        continue
-                    drawer.update_param(field_params.nums_of_ships[5], -1,
-                                        x_start_left, y_start + 7.5 *
-                                        ui.cell_size)
-                    field_params.nums_of_ships[5] -= 1
-        pygame.display.update()
-
-    if GAME_WITH_BOT:
-        players = {1: Player(field_params),
-                   2: Bot(1, field_params)}
-    else:
-        players = {1: Player(field_params),
-                   2: Player(field_params)}
-
-    shootings = {1: ShootingManager(1, players[1], drawer),
-                 2: ShootingManager(2, players[2], drawer)}
-    enemy_num = 2
-    player_num = 1
-
-    x_start, y_start = 0, 0
-    start = (0, 0)
-    ship_size = 0, 0
-    drawn_ships = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # сколько кораблей
-    # какой длины нарисовано
-    ships_to_draw = []
-
-    def redraw_field(player_label, num):
-        nonlocal drawn_ships, ships_to_draw, first_field_made, \
-            ships_created_1, second_field_made, ships_created_2
-        drawer.draw_field_window(player_label)
-        players[num].field.set_cells_state()
-        players[num].field.ships = dict()
-        ships_to_draw = []
-        drawn_ships = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        if num == 1:
-            first_field_made = False
-            ships_created_1 = False
-        else:
-            second_field_made = False
-            ships_created_2 = False
-
-    while not first_field_made:
-        mouse = pygame.mouse.get_pos()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                first_field_made = True
-                second_field_made = True
-                game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.next_btn.rect.collidepoint(mouse) and ships_created_1:
-                first_field_made = True
-                if GAME_WITH_BOT:
-                    players[2].field.generate_ships(drawer, 'Поле компьютера')
-                    second_field_made = True
-                    ships_created_2 = True
-                    drawer.draw_game_window('Ваше поле', 'Поле компьютера')
-                else:
-                    drawer.draw_field_window('Игрок 2')
-            elif event.type == pygame.MOUSEBUTTONDOWN \
-                    and ui.random_btn.rect.collidepoint(mouse):
-                if can_draw:
-                    can_draw = False
-                    redraw_field(labels[1], 1)
-                players[1].field.generate_ships(drawer, labels[1])
-                ships_created_1 = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.clear_btn.rect.collidepoint(mouse):
-                redraw_field(labels[1], 1)
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.cancel_btn.rect.collidepoint(mouse) and can_draw:
-                if ships_to_draw:
-                    last_ship = ships_to_draw.pop()
-                    drawn_ships[len(last_ship) - 1] -= 1
-                    players[1].field.remove_ship(last_ship)
-
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.manual_btn.rect.collidepoint(mouse):
-                can_draw = True
-                redraw_field(labels[1], 1)
-            elif event.type == pygame.MOUSEBUTTONDOWN and can_draw:
-                drawing = True
-                x_start, y_start = event.pos
-                start = x_start, y_start
-                ship_size = 0, 0
-            elif event.type == pygame.MOUSEMOTION and drawing:
-                x_end, y_end = event.pos
-                end = x_end, y_end
-                ship_size = x_end - x_start, y_end - y_start
-            elif event.type == pygame.MOUSEBUTTONUP and drawing:
-                x_end, y_end = event.pos
-                ship_size = 0, 0
-                drawing = False
-                start_cell = (int((x_start - ui.left_margin) / ui.cell_size
-                                  + 1 - offset_for_field - 4),
-                              int((y_start - ui.top_margin) / ui.cell_size
-                                  + 1 - offset_for_field))
-                end_cell = (int((x_end - ui.left_margin) / ui.cell_size
-                                + 1 - offset_for_field - 4),
-                            int((y_end - ui.top_margin) / ui.cell_size
-                                + 1 - offset_for_field))
-                print(start_cell, end_cell)
-                if start_cell > end_cell:
-                    start_cell, end_cell = end_cell, start_cell
-                temp_ship = []
-                if 1 <= start_cell[0] <= field_size \
-                        and 1 <= start_cell[1] <= field_size \
-                        and 1 <= end_cell[0] <= field_size \
-                        and 1 <= end_cell[1] <= field_size:
-                    no_ships = []  # кораблей какой длины не должно быть
-                    for n in range(len(field_params.nums_of_ships)):
-                        if field_params.nums_of_ships[n] == 0:
-                            no_ships.append(n + 1)
-                    if end_cell[1] - start_cell[1] in no_ships or \
-                            end_cell[0] - start_cell[0] in no_ships:
-                        continue
-                    else:
-                        if start_cell[0] == end_cell[0]:
-                            for cell in range(start_cell[1], end_cell[1] + 1):
-                                temp_ship.append((start_cell[0], cell))
-                        elif start_cell[1] == end_cell[1]:
-                            for cell in range(start_cell[0], end_cell[0] + 1):
-                                temp_ship.append((cell, start_cell[1]))
-                if temp_ship:
-                    if players[1].field.is_ship_can_be_put(temp_ship) and \
-                            drawn_ships[len(temp_ship) - 1] < \
-                            field_params.nums_of_ships[len(temp_ship) - 1]:
-                        players[1].field.add_ship(temp_ship)
-                        drawn_ships[len(temp_ship) - 1] += 1
-                        ships_to_draw.append(temp_ship)
-            if len(ships_to_draw) == field_params.total:
-                ships_created_1 = True
-        if not first_field_made and can_draw:
-            drawer.draw_field_window(labels[1])
-            pygame.draw.rect(ui.screen, ui.BLACK, (start, ship_size), 3)
-            for ship in ships_to_draw:
-                if len(ship) > 1 and ship[0][1] == ship[1][1]:
-                    drawer.draw_ship(ship, 0, 4)
-                else:
-                    drawer.draw_ship(ship, 1, 4)
-        pygame.display.update()
-
-    can_draw = False
-
-    while not second_field_made:
-        mouse = pygame.mouse.get_pos()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                second_field_made = True
-                game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.next_btn.rect.collidepoint(mouse) and ships_created_2:
-                second_field_made = True
-                drawer.draw_game_window(labels[1], labels[2])
-            elif event.type == pygame.MOUSEBUTTONDOWN \
-                    and ui.random_btn.rect.collidepoint(mouse):
-                if can_draw:
-                    can_draw = False
-                    redraw_field(labels[2], 2)
-                players[2].field.generate_ships(drawer, labels[2])
-                ships_created_2 = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.clear_btn.rect.collidepoint(mouse):
-                redraw_field(labels[2], 2)
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.cancel_btn.rect.collidepoint(mouse) and can_draw:
-                if ships_to_draw:
-                    last_ship = ships_to_draw.pop()
-                    drawn_ships[len(last_ship) - 1] -= 1
-                    players[2].field.remove_ship(last_ship)
-
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-                    ui.manual_btn.rect.collidepoint(mouse):
-                can_draw = True
-                redraw_field(labels[2], 2)
-            elif event.type == pygame.MOUSEBUTTONDOWN and can_draw:
-                drawing = True
-                x_start, y_start = event.pos
-                start = x_start, y_start
-                ship_size = 0, 0
-            elif event.type == pygame.MOUSEMOTION and drawing:
-                x_end, y_end = event.pos
-                end = x_end, y_end
-                ship_size = x_end - x_start, y_end - y_start
-            elif event.type == pygame.MOUSEBUTTONUP and drawing:
-                x_end, y_end = event.pos
-                ship_size = 0, 0
-                drawing = False
-                start_cell = (int((x_start - ui.left_margin) / ui.cell_size
-                                  + 1 - offset_for_field - 4),
-                              int((y_start - ui.top_margin) / ui.cell_size
-                                  + 1 - offset_for_field))
-                end_cell = (int((x_end - ui.left_margin) / ui.cell_size
-                                + 1 - offset_for_field - 4),
-                            int((y_end - ui.top_margin) / ui.cell_size
-                                + 1 - offset_for_field))
-                print(start_cell, end_cell)
-                if start_cell > end_cell:
-                    start_cell, end_cell = end_cell, start_cell
-                temp_ship = []
-                if 1 <= start_cell[0] <= field_size \
-                        and 1 <= start_cell[1] <= field_size \
-                        and 1 <= end_cell[0] <= field_size \
-                        and 1 <= end_cell[1] <= field_size:
-                    no_ships = []  # кораблей какой длины не должно быть
-                    for n in range(len(field_params.nums_of_ships)):
-                        if field_params.nums_of_ships[n] == 0:
-                            no_ships.append(n + 1)
-                    if end_cell[1] - start_cell[1] in no_ships or \
-                            end_cell[0] - start_cell[0] in no_ships:
-                        continue
-                    else:
-                        if start_cell[0] == end_cell[0]:
-                            for cell in range(start_cell[1], end_cell[1] + 1):
-                                temp_ship.append((start_cell[0], cell))
-                        elif start_cell[1] == end_cell[1]:
-                            for cell in range(start_cell[0], end_cell[0] + 1):
-                                temp_ship.append((cell, start_cell[1]))
-                if temp_ship:
-                    if players[2].field.is_ship_can_be_put(temp_ship) and \
-                            drawn_ships[len(temp_ship) - 1] < \
-                            field_params.nums_of_ships[len(temp_ship) - 1]:
-                        players[2].field.add_ship(temp_ship)
-                        drawn_ships[len(temp_ship) - 1] += 1
-                        ships_to_draw.append(temp_ship)
-            if len(ships_to_draw) == field_params.total:
-                ships_created_2 = True
-        if not second_field_made and can_draw:
-            drawer.draw_field_window(labels[2])
-            pygame.draw.rect(ui.screen, ui.BLACK, (start, ship_size), 3)
-            for ship in ships_to_draw:
-                if len(ship) > 1 and ship[0][1] == ship[1][1]:
-                    drawer.draw_ship(ship, 0, 4)
-                else:
-                    drawer.draw_ship(ship, 1, 4)
-        pygame.display.update()
-
-    for p in players.values():
-        p.field.set_cells_state()
-
-    def change_turn():
-        nonlocal player_num, enemy_num, bot_turn
-        player_num, enemy_num = enemy_num, player_num
-        if GAME_WITH_BOT:
-            bot_turn = not bot_turn
-
-    def is_winner(player):
-        return players[player].score == field_params.max_score
-
-    bot_turn = False
-
-    while not game_over:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                game_over = True
-            elif event.type == pygame.MOUSEBUTTONDOWN or bot_turn:
-
-                offset = ui.OFFSETS[enemy_num]
-                enemy = players[enemy_num]
-                fired_cell = (0, 0)
-                if bot_turn:
-                    fired_cell = players[2].do_shot(enemy)
-                else:
-                    x, y = event.pos
-                    if ui.left_margin + (offset + offset_for_field) * \
-                            ui.cell_size <= x <= ui.left_margin + \
-                            (field_size + offset + offset_for_field) * \
-                            ui.cell_size and ui.top_margin + \
-                            offset_for_field * \
-                            ui.cell_size <= y <= \
-                            ui.top_margin + (field_size +
-                                             offset_for_field) * \
-                            ui.cell_size:
-                        fired_cell = (int((x - ui.left_margin) / ui.cell_size
-                                          + 1 - offset - offset_for_field),
-                                      int((y - ui.top_margin) / ui.cell_size
-                                          + 1 - offset_for_field))
-                if fired_cell != (0, 0):
-                    if fired_cell in enemy.field.ships and \
-                            enemy.field.ships[fired_cell][0] is False:
-                        if bot_turn:
-                            players[2].last_good_shot = fired_cell
-                        enemy.field.cells_state[fired_cell] = False
-                        players[player_num].score += 1
-                        shootings[enemy_num].wounded(fired_cell[0],
-                                                     fired_cell[1])
-                        if bot_turn:
-                            players[2].killed = False
-                        drawer.update_score(players[player_num].score,
-                                            ui.OFFSETS[player_num])
-
-                        if shootings[enemy_num].is_killed(fired_cell[0],
-                                                          fired_cell[1]):
-                            if bot_turn:
-                                players[2].killed = True
-                                players[2].last_good_shot = (0, 0)
-                            shootings[enemy_num].killed(fired_cell[0],
-                                                        fired_cell[1])
-                            ui.sound_killed.play()
-                            drawer.make_label('Убил', 7.5, 12 * ui.cell_size)
+    def setup_field(self):
+        global offset_for_field, field_size
+        y_start = ui.top_margin * 1.5
+        x_start_right = ui.left_margin + 21.5 * ui.cell_size + 10
+        x_start_left = ui.left_margin + 11.5 * ui.cell_size + 10
+        while not self.field_set_up:
+            mouse = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.field_set_up = True
+                    self.field_made = True
+                    self.game_over = True
+                    self.game_finished = True
+                    self.level_chosen = True
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if ui.next_btn.rect.collidepoint(mouse):
+                        if self.are_params_correct():
+                            self.field_params.update_params()
+                            self.field_set_up = True
+                            offset_for_field = self.field_params.offset
+                            field_size = self.field_params.field_size
+                            self.drawer = DrawManager(self.field_params)
+                            self.drawer.draw_field_window(self.labels[1])
                         else:
-                            ui.sound_wounded.play()
-                            drawer.make_label('Ранил', 7.5, 12 * ui.cell_size)
-                        if is_winner(player_num):
-                            if GAME_WITH_BOT:
-                                if player_num == 2:
-                                    drawer.make_label(
-                                        'Компьютер победил', 7.5,
-                                        12 * ui.cell_size, ui.RED)
-                                else:
-                                    drawer.make_label('Вы победили', 7.5,
-                                                      12 * ui.cell_size,
-                                                      ui.RED)
-                            else:
-                                drawer.make_label(
-                                    'Игрок {0} победил'.format(player_num),
-                                    7.5,
-                                    12 * ui.cell_size, ui.RED)
-                            game_over = True
-                    elif fired_cell not in enemy.field.ships:
-                        if enemy.field.cells_state[fired_cell] is True:
-                            change_turn()
-                            shootings[player_num].missed(fired_cell[0],
-                                                         fired_cell[1])
-                            ui.sound_missed.play()
-                            drawer.make_label('Промазал', 7.5, 12 *
-                                              ui.cell_size)
+                            if self.field_params.field_size == 0:
+                                self.drawer.make_label(
+                                    'Размер поля должен быть больше 0',
+                                    7.5, 11 * ui.cell_size, ui.RED)
+                            elif self.zero_ships():
+                                self.drawer.make_label(
+                                    'Слишком мало кораблей',
+                                    7.5, 11 * ui.cell_size, ui.RED)
+                            elif self.too_many_ships():
+                                self.drawer.make_label(
+                                    'Уменьшите количество кораблей',
+                                    7.5, 11 * ui.cell_size, ui.RED)
 
-        pygame.display.update()
+                    elif ui.plus_size_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size == 10:
+                            continue
+                        self.drawer.update_param(self.field_params.field_size,
+                                                 1, ui.left_margin + 10 + 13
+                                                 * ui.cell_size, y_start)
+                        self.field_params.field_size += 1
+
+                    elif ui.minus_size_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size == 2:
+                            continue
+                        self.drawer.update_param(self.field_params.field_size,
+                                                 -1, ui.left_margin + 10 + 13
+                                                 * ui.cell_size, y_start)
+                        self.field_params.field_size -= 1
+
+                    elif ui.plus_4_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 4:
+                            self.drawer.make_label(
+                                '4-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[3],
+                                            1, x_start_right, y_start + 3 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[3] += 1
+                    elif ui.minus_4_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[3] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[3],
+                                            -1, x_start_right, y_start + 3 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[3] -= 1
+
+                    elif ui.plus_3_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 3:
+                            self.drawer.make_label(
+                                '3-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[2],
+                                            1, x_start_right, y_start + 4.5 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[2] += 1
+                    elif ui.minus_3_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[2] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[2],
+                                            -1, x_start_right, y_start + 4.5 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[2] -= 1
+
+                    elif ui.plus_2_btn.rect.collidepoint(mouse):
+                        self.drawer.update_param(self.field_params.nums_of_ships[1],
+                                            1, x_start_right, y_start + 6 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[1] += 1
+                    elif ui.minus_2_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[1] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[1],
+                                            -1, x_start_right, y_start + 6 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[1] -= 1
+
+                    elif ui.plus_1_btn.rect.collidepoint(mouse):
+                        self.drawer.update_param(self.field_params.nums_of_ships[0],
+                                            1, x_start_right,
+                                            y_start + 7.5 * ui.cell_size)
+                        self.field_params.nums_of_ships[0] += 1
+                    elif ui.minus_1_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[0] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[0],
+                                            -1, x_start_right, y_start + 7.5 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[0] -= 1
+
+                    elif ui.plus_5_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 5:
+                            self.drawer.make_label(
+                                '5-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[4],
+                                            1, x_start_right,
+                                            y_start + 1.5 * ui.cell_size)
+                        self.field_params.nums_of_ships[4] += 1
+                    elif ui.minus_5_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[4] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[4],
+                                            -1, x_start_right, y_start + 1.5 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[4] -= 1
+
+                    elif ui.plus_10_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 10:
+                            self.drawer.make_label(
+                                '10-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[9],
+                                            1, x_start_left,
+                                            y_start + 1.5 * ui.cell_size)
+                        self.field_params.nums_of_ships[9] += 1
+                    elif ui.minus_10_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[9] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[9],
+                                            -1, x_start_left, y_start + 1.5 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[9] -= 1
+
+                    elif ui.plus_9_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 9:
+                            self.drawer.make_label(
+                                '9-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[8],
+                                            1, x_start_left,
+                                            y_start + 3 * ui.cell_size)
+                        self.field_params.nums_of_ships[8] += 1
+                    elif ui.minus_9_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[8] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[8],
+                                            -1, x_start_left, y_start + 3 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[8] -= 1
+
+                    elif ui.plus_8_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 8:
+                            self.drawer.make_label(
+                                '8-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[7],
+                                            1, x_start_left,
+                                            y_start + 4.5 * ui.cell_size)
+                        self.field_params.nums_of_ships[7] += 1
+                    elif ui.minus_8_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[7] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[7],
+                                            -1, x_start_left, y_start + 4.5 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[7] -= 1
+
+                    elif ui.plus_7_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 7:
+                            self.drawer.make_label(
+                                '7-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[6],
+                                            1, x_start_left,
+                                            y_start + 6 * ui.cell_size)
+                        self.field_params.nums_of_ships[6] += 1
+                    elif ui.minus_7_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[6] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[6],
+                                            -1, x_start_left, y_start + 6 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[6] -= 1
+
+                    elif ui.plus_6_btn.rect.collidepoint(mouse):
+                        if self.field_params.field_size < 6:
+                            self.drawer.make_label(
+                                '6-палубный корабль не влезет на поле',
+                                7.5, 11 * ui.cell_size, ui.RED)
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[5],
+                                            1, x_start_left,
+                                            y_start + 7.5 * ui.cell_size)
+                        self.field_params.nums_of_ships[5] += 1
+                    elif ui.minus_6_btn.rect.collidepoint(mouse):
+                        if self.field_params.nums_of_ships[5] == 0:
+                            continue
+                        self.drawer.update_param(self.field_params.nums_of_ships[5],
+                                            -1, x_start_left, y_start + 7.5 *
+                                            ui.cell_size)
+                        self.field_params.nums_of_ships[5] -= 1
+            pygame.display.update()
+
+    def redraw_field(self, player_label, num):
+        self.drawer.draw_field_window(player_label)
+        self.players[num].field.set_cells_state()
+        self.players[num].field.ships = dict()
+        self.ships_to_draw = []
+        self.drawn_ships = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.field_made = False
+        self.ships_created = False
+
+    def create_field(self, player):
+        can_draw = False
+        drawing = False
+        self.field_made = False
+        self.ships_created = False
+        x_start, y_start = 0, 0
+        ship_size = 0, 0
+
+        while not self.field_made:
+            mouse = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.field_made = True
+                    self.game_over = True
+                    self.game_finished = True
+                    self.level_chosen = True
+                elif event.type == pygame.MOUSEBUTTONDOWN \
+                        and ui.next_btn.rect.collidepoint(mouse) \
+                        and self.ships_created:
+                    self.field_made = True
+                    if player == 1:
+                        if GAME_WITH_BOT:
+                            self.players[2].field.generate_ships(self.drawer,
+                                                                 self.labels[2])
+                            self.drawer.draw_game_window(self.labels[1],
+                                                         self.labels[2])
+                        else:
+                            self.drawer.draw_field_window(self.labels[2])
+                            self.create_field(2)
+                    else:
+                        self.drawer.draw_game_window(self.labels[1],
+                                                     self.labels[2])
+                elif event.type == pygame.MOUSEBUTTONDOWN \
+                        and ui.random_btn.rect.collidepoint(mouse):
+                    if can_draw:
+                        can_draw = False
+                        self.redraw_field(self.labels[player], player)
+                    self.players[player].field.generate_ships(
+                        self.drawer, self.labels[player])
+                    self.ships_created = True
+                elif event.type == pygame.MOUSEBUTTONDOWN \
+                        and ui.clear_btn.rect.collidepoint(mouse):
+                    self.redraw_field(self.labels[player], player)
+                elif event.type == pygame.MOUSEBUTTONDOWN \
+                        and ui.cancel_btn.rect.collidepoint(mouse) \
+                        and can_draw:
+                    if self.ships_to_draw:
+                        last_ship = self.ships_to_draw.pop()
+                        self.drawn_ships[len(last_ship) - 1] -= 1
+                        self.players[player].field.remove_ship(last_ship)
+
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        ui.manual_btn.rect.collidepoint(mouse):
+                    can_draw = True
+                    self.redraw_field(self.labels[player], player)
+                elif event.type == pygame.MOUSEBUTTONDOWN and can_draw:
+                    drawing = True
+                    x_start, y_start = event.pos
+                    ship_size = 0, 0
+                elif event.type == pygame.MOUSEMOTION and drawing:
+                    x_end, y_end = event.pos
+                    ship_size = x_end - x_start, y_end - y_start
+                elif event.type == pygame.MOUSEBUTTONUP and drawing:
+                    x_end, y_end = event.pos
+                    ship_size = 0, 0
+                    drawing = False
+                    start_cell = (int((x_start - ui.left_margin) / ui.cell_size
+                                      + 1 - offset_for_field - 7.5),
+                                  int((y_start - ui.top_margin) / ui.cell_size
+                                      + 1 - offset_for_field))
+                    end_cell = (int((x_end - ui.left_margin) / ui.cell_size
+                                    + 1 - offset_for_field - 7.5),
+                                int((y_end - ui.top_margin) / ui.cell_size
+                                    + 1 - offset_for_field))
+                    if start_cell > end_cell:
+                        start_cell, end_cell = end_cell, start_cell
+                    temp_ship = []
+
+                    if 1 <= start_cell[0] <= field_size \
+                            and 1 <= start_cell[1] <= field_size \
+                            and 1 <= end_cell[0] <= field_size \
+                            and 1 <= end_cell[1] <= field_size:
+
+                        ships_stop_list = []
+                        for n in range(len(self.field_params.nums_of_ships)):
+                            if self.field_params.nums_of_ships[n] == 0:
+                                ships_stop_list.append(n + 1)
+                        if end_cell[1] - start_cell[1] + 1 in ships_stop_list \
+                                or end_cell[0] - start_cell[0] + 1 in \
+                                ships_stop_list:
+                            continue
+                        else:
+                            if start_cell[0] == end_cell[0]:
+                                for cell in range(start_cell[1],
+                                                  end_cell[1] + 1):
+                                    temp_ship.append((start_cell[0], cell))
+                            elif start_cell[1] == end_cell[1]:
+                                for cell in range(start_cell[0],
+                                                  end_cell[0] + 1):
+                                    temp_ship.append((cell, start_cell[1]))
+                    if temp_ship and \
+                            self.players[player].field.is_ship_can_be_put(
+                                temp_ship) and \
+                            self.drawn_ships[len(temp_ship) - 1] < \
+                            self.field_params.nums_of_ships[
+                                len(temp_ship) - 1]:
+                        self.players[player].field.add_ship(temp_ship)
+                        self.drawn_ships[len(temp_ship) - 1] += 1
+                        self.ships_to_draw.append(temp_ship)
+                if len(self.ships_to_draw) == self.field_params.total:
+                    self.ships_created = True
+            if not self.field_made and can_draw:
+                self.drawer.draw_field_window(self.labels[player])
+                pygame.draw.rect(ui.screen, ui.BLACK,
+                                 ((x_start, y_start), ship_size), 3)
+                for ship in self.ships_to_draw:
+                    if len(ship) > 1 and ship[0][1] == ship[1][1]:
+                        self.drawer.draw_ship(ship, 0, 7.5)
+                    else:
+                        self.drawer.draw_ship(ship, 1, 7.5)
+            pygame.display.update()
+
+    def change_turn(self):
+        self.player_num, self.enemy_num = self.enemy_num, self.player_num
+        if GAME_WITH_BOT:
+            self.bot_turn = not self.bot_turn
+
+    def is_winner(self):
+        return self.players[self.player_num].score == self.field_params.max_score
+
+    def play(self):
+        while not self.game_over:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.game_over = True
+                    self.game_finished = True
+                    self.level_chosen = True
+                elif event.type == pygame.MOUSEBUTTONDOWN or self.bot_turn:
+                    offset = ui.OFFSETS[self.enemy_num]
+                    enemy = self.players[self.enemy_num]
+                    fired_cell = (0, 0)
+                    if self.bot_turn:
+                        fired_cell = self.players[2].do_shot(enemy, self.level)
+                    else:
+                        x, y = event.pos
+                        if ui.left_margin + (offset + offset_for_field) * \
+                                ui.cell_size <= x <= ui.left_margin + \
+                                (field_size + offset + offset_for_field) * \
+                                ui.cell_size and ui.top_margin + \
+                                offset_for_field * \
+                                ui.cell_size <= y <= \
+                                ui.top_margin + (field_size +
+                                                 offset_for_field) * \
+                                ui.cell_size:
+                            fired_cell = (
+                            int((x - ui.left_margin) / ui.cell_size
+                                + 1 - offset - offset_for_field),
+                            int((y - ui.top_margin) / ui.cell_size
+                                + 1 - offset_for_field))
+                    if fired_cell != (0, 0):
+                        if fired_cell in enemy.field.ships and \
+                                enemy.field.ships[fired_cell][0] is False:
+                            if self.bot_turn:
+                                self.players[2].last_good_shot = fired_cell
+                            enemy.field.cells_state[fired_cell] = False
+                            self.players[self.player_num].score += 1
+                            self.shootings[self.enemy_num].wounded(fired_cell[0],
+                                                         fired_cell[1])
+                            if self.bot_turn:
+                                self.players[2].killed = False
+                            self.drawer.update_score(self.players[self.player_num].score,
+                                                ui.OFFSETS[self.player_num])
+
+                            if self.shootings[self.enemy_num].is_killed(fired_cell[0],
+                                                              fired_cell[1]):
+                                if self.bot_turn:
+                                    self.players[2].killed = True
+                                    self.players[2].last_good_shot = (0, 0)
+                                self.shootings[self.enemy_num].killed(fired_cell[0],
+                                                            fired_cell[1])
+                                ui.sound_killed.play()
+                                self.drawer.make_label('Убил', 7.5,
+                                                  12 * ui.cell_size)
+                            else:
+                                ui.sound_wounded.play()
+                                self.drawer.make_label('Ранил', 7.5,
+                                                  12 * ui.cell_size)
+                            if self.is_winner():
+                                self.game_over = True
+                                if GAME_WITH_BOT:
+                                    if self.player_num == 2:
+                                        self.drawer.draw_win_window(
+                                            'Компьютер победил')
+                                    else:
+                                        self.drawer.draw_win_window(
+                                            'Вы победили')
+                                else:
+                                    self.drawer.draw_win_window(
+                                        'Игрок {0} победил'.format(
+                                            self.player_num))
+
+                        elif fired_cell not in enemy.field.ships:
+                            print(self.enemy_num)
+                            if enemy.field.cells_state[fired_cell] is True:
+                                self.change_turn()
+                                self.shootings[self.player_num].missed(fired_cell[0],
+                                                             fired_cell[1])
+                                ui.sound_missed.play()
+                                self.drawer.make_label('Промазал', 7.5, 12 *
+                                                  ui.cell_size)
+
+            pygame.display.update()
+
+    def finish(self):
+        while not self.game_finished:
+            mouse = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.game_finished = True
+                    self.level_chosen = True
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        ui.restart_btn.rect.collidepoint(mouse):
+                    self.new_game()
+            pygame.display.update()
+
+
+def main():
+    game = Game()
+    game.new_game()
 
 
 if __name__ == '__main__':
