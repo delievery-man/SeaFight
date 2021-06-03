@@ -72,6 +72,9 @@ class Field:
             else:
                 tries += 1
             if tries == 10:
+                self.ships = {}
+                self.set_cells_state()
+                self.ships_to_draw = []
                 break
 
     def make_ship(self, x, y, turn, length):
