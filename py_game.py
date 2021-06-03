@@ -33,6 +33,7 @@ class Field:
     def __init__(self, field_params):
         self.field_size = field_params.field_size
         self.nums_of_ships = field_params.nums_of_ships
+        self.total = field_params.total
         self.cells_state = dict()
         self.set_cells_state()
         self.ships_to_draw = []
@@ -48,22 +49,29 @@ class Field:
         self.set_cells_state()
         self.ships_to_draw = []
         drawer.draw_field_window(label)
-        for i in range(len(self.nums_of_ships)):
-            self.generate_ships_by_length(self.nums_of_ships[i], i + 1, drawer)
+        while len(self.ships_to_draw) < self.total:
+            for i in range(len(self.nums_of_ships)):
+                self.generate_ships_by_length(self.nums_of_ships[i], i + 1)
         for ship in self.ships_to_draw:
             drawer.draw_ship(ship[0], ship[1], 7.5)
 
     def generate_ships_by_length(self, number_of_ships, length):
         s = 0
+        tries = 0
         while s < number_of_ships:
             x = random.randint(1, self.field_size)
             y = random.randint(1, self.field_size)
             turn = random.randint(0, 1)
             ship = self.make_ship(x, y, turn, length)
             if self.is_ship_can_be_put(ship):
+                tries = 0
                 self.add_ship(ship)
                 self.ships_to_draw.append((ship, turn))
                 s += 1
+            else:
+                tries += 1
+            if tries == 10:
+                break
 
     def make_ship(self, x, y, turn, length):
         if turn == 0:
