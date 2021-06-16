@@ -3,6 +3,7 @@ import pygame
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
+BLUE = (65,105,225)
 cell_size = 30
 left_margin = 60
 top_margin = 90
@@ -42,7 +43,6 @@ class Button:
         self.title_width, self.title_height = font.size(self.title)
         self.rect = pygame.Rect((0, 0, 0, 0))
 
-
 class DrawManager:
     def __init__(self, field_params):
         self.screen = screen
@@ -51,6 +51,14 @@ class DrawManager:
         self.offset_for_field = field_params.offset
         self.nums_of_ships = field_params.nums_of_ships
         self.letters = [chr(i) for i in range(65, 65 + self.field_size)]
+
+    def draw_grid(self):
+        for i in range(screen_width // cell_size):
+            pygame.draw.line(self.screen, BLUE,
+                             (cell_size * i, 0),
+                             (cell_size * i, screen_height))
+            pygame.draw.line(self.screen, BLUE, (0, cell_size * i),
+                             (screen_width, cell_size * i))
 
     def draw_button(self, button, x_start, y_start, width=btn_width,
                     height=btn_height, color=BLACK):
@@ -123,6 +131,7 @@ class DrawManager:
 
     def draw_start_window(self):
         self.screen.fill(WHITE)
+        self.draw_grid()
         self.draw_button(start_with_friend_btn,
                          (screen_width - btn_width * 2) / 3,
                          (screen_height - btn_height) / 2)
@@ -172,6 +181,7 @@ class DrawManager:
 
     def draw_field_settings_window(self):
         self.screen.fill(WHITE)
+        self.draw_grid()
         self.make_label('Настройте параметры поля', middle_offset, 0)
         self.make_label('Размер поля', 10, 2 * cell_size)
 
@@ -209,7 +219,6 @@ class DrawManager:
                          (x_start + 0.3 * cell_size, y_start + 0.25 *
                           cell_size))
 
-
     def draw_ships_in_game(self):
         x_start = left_margin
         y_start = top_margin
@@ -230,6 +239,7 @@ class DrawManager:
 
     def draw_field_window(self, label):
         self.screen.fill(WHITE)
+        self.draw_grid()
         self.draw_field(middle_offset)
         self.make_label(label, middle_offset)
         self.draw_ships_in_game()
@@ -264,6 +274,7 @@ class DrawManager:
     def draw_game_window(self, player1, player2):
         global OFFSETS
         self.screen.fill(WHITE)
+        self.draw_grid()
         for offset in OFFSETS.values():
             self.draw_field(offset)
             self.update_score(0, offset)
@@ -302,12 +313,14 @@ class DrawManager:
 
     def draw_win_window(self, label):
         self.screen.fill(WHITE)
+        self.draw_grid()
         self.make_label(label, middle_offset, color=RED)
         self.draw_button(restart_btn, (screen_width - btn_width) / 2,
                          (screen_height - btn_height) / 2)
 
     def draw_levels_window(self):
         self.screen.fill(WHITE)
+        self.draw_grid()
         self.make_label('Выберите уровень сложности', middle_offset)
         y_start = (screen_height - 3 * btn_height - 2 * cell_size) / 2
         self.draw_button(level_1_btn, (screen_width - btn_width) / 2,
