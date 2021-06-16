@@ -424,33 +424,42 @@ class Game:
         return total >= (self.field_params.field_size *
                          self.field_params.field_size) / 2
 
+    def set_coef(self):
+        size = self.field_params.field_size
+        coef = dict()
+        k = 0
+        for i in range(size, size // 2, -1):
+            coef[i] = k
+            k += 2
+        k = 0
+        for i in range(size // 2, 0, -1):
+            coef[i] = k
+            k += 2
+        return coef
+
     def check_buttons(self, mouse):
-        y_start = 2 * ui.top_margin
-        x_start_right = ui.left_margin + 33.5 * ui.cell_size + 10
-        x_start_left = ui.left_margin + 21.5 * ui.cell_size + 10
-        koef = {14: 0, 13: 1.5, 12: 3, 11: 4.5, 10: 6, 9: 7.5, 8: 9, 7: 10.5, 6: 0, 5: 1.5, 4: 3, 3: 4.5, 2: 6, 1: 7.5, 0:9}
+        size = self.field_params.field_size
+        y_start = 5 * ui.cell_size
+        x_start_left = ui.left_margin + (size + 2) * ui.cell_size
+        x_start_right = (size // 2 + 26) * ui.cell_size
+        coef = self.set_coef()
         for i in range(len(ui.minus_plus_buttons)):
             minus_btn = ui.minus_plus_buttons[i][0]
             plus_btn = ui.minus_plus_buttons[i][1]
-            if 7 <= i <= 14:
-                x_start = x_start_left
-            else:
+            if 0 <= i <= size // 2 - 1:
                 x_start = x_start_right
+            else:
+                x_start = x_start_left
             if plus_btn.rect.collidepoint(mouse):
-                if self.field_params.field_size < i + 1:
-                    self.drawer.make_label(
-                        '{0}-палубный корабль не влезет на поле'.format(i + 1),
-                        middle_offset, 17 * ui.cell_size, ui.RED)
-                    continue
                 self.drawer.update_param(self.field_params.nums_of_ships[i],
-                                         1, x_start, y_start + koef[i] *
+                                         1, x_start, y_start + coef[i + 1] *
                                          ui.cell_size)
                 self.field_params.nums_of_ships[i] += 1
             elif minus_btn.rect.collidepoint(mouse):
                 if self.field_params.nums_of_ships[i] == 0:
                     continue
                 self.drawer.update_param(self.field_params.nums_of_ships[i],
-                                         -1, x_start, y_start + koef[i] *
+                                         -1, x_start, y_start + coef[i + 1] *
                                          ui.cell_size)
                 self.field_params.nums_of_ships[i] -= 1
 
@@ -492,15 +501,17 @@ class Game:
                         if self.field_params.field_size == 15:
                             continue
                         self.drawer.update_param(self.field_params.field_size,
-                                                 1, ui.left_margin + 21 * ui.cell_size + 10, 1.4 * ui.top_margin)
+                                                 1, ui.left_margin + 21 * ui.cell_size, 3 * ui.cell_size)
                         self.field_params.field_size += 1
+                        self.drawer.redraw_field_settings_window(self.field_params)
 
                     elif ui.minus_size_btn.rect.collidepoint(mouse):
                         if self.field_params.field_size == 2:
                             continue
                         self.drawer.update_param(self.field_params.field_size,
-                                                 -1, ui.left_margin + 21 * ui.cell_size + 10, 1.4 * ui.top_margin)
+                                                 -1, ui.left_margin + 21 * ui.cell_size, 3 * ui.cell_size)
                         self.field_params.field_size -= 1
+                        self.drawer.redraw_field_settings_window(self.field_params)
 
                     else:
                         self.check_buttons(mouse)
@@ -697,11 +708,11 @@ class Game:
                                 self.shootings[self.enemy_num].killed(fired_cell[0],
                                                             fired_cell[1])
                                 ui.sound_killed.play()
-                                self.drawer.make_label('Убил', middle_offset,
+                                self.drawer.make_label('Убил', 22 * ui.cell_size,
                                                   17 * ui.cell_size)
                             else:
                                 ui.sound_wounded.play()
-                                self.drawer.make_label('Ранил', middle_offset,
+                                self.drawer.make_label('Ранил', 22 * ui.cell_size,
                                                   17 * ui.cell_size)
                             if self.is_winner():
                                 self.game_over = True
@@ -718,13 +729,12 @@ class Game:
                                             self.player_num))
 
                         elif fired_cell not in enemy.field.ships:
-                            print(self.enemy_num)
                             if enemy.field.cells_state[fired_cell] is True:
                                 self.change_turn()
                                 self.shootings[self.player_num].missed(fired_cell[0],
                                                              fired_cell[1])
                                 ui.sound_missed.play()
-                                self.drawer.make_label('Промазал', middle_offset, 17 *
+                                self.drawer.make_label('Промазал', 22 * ui.cell_size, 17 *
                                                   ui.cell_size)
 
             pygame.display.update()
