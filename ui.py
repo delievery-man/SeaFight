@@ -6,11 +6,12 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 LIGHT_BLUE = (65, 105, 225)
 BLUE = (0, 0, 139)
+BUTTON_BLUE = (70,130,180)
 cell_size = 30
 left_margin = 60
 top_margin = 90
 screen_width, screen_height = left_margin * 2 + cell_size * 40, \
-                              top_margin * 2 + 40 + cell_size * 16
+                              top_margin * 2 + cell_size * 16
 btn_width, btn_height = 175, 45
 
 OFFSETS = {1: 0,
@@ -54,16 +55,16 @@ class DrawManager:
         self.nums_of_ships = field_params.nums_of_ships
         self.letters = [chr(i) for i in range(65, 65 + self.field_size)]
 
-    def draw_grid(self):
+    def draw_grid(self, color):
         for i in range(screen_width // cell_size):
-            pygame.draw.line(self.screen, LIGHT_BLUE,
+            pygame.draw.line(self.screen, color,
                              (cell_size * i, 0),
                              (cell_size * i, screen_height))
-            pygame.draw.line(self.screen, LIGHT_BLUE, (0, cell_size * i),
+            pygame.draw.line(self.screen, color, (0, cell_size * i),
                              (screen_width, cell_size * i))
 
     def draw_button(self, button, x_start, y_start, width=btn_width,
-                    height=btn_height, color=BLACK):
+                    height=btn_height, color=BUTTON_BLUE):
         title_params = (x_start + width / 2 - button.title_width / 2,
                         y_start + height / 2 - button.title_height / 2)
         pygame.draw.rect(self.screen, color, (x_start, y_start, width, height))
@@ -94,8 +95,8 @@ class DrawManager:
                               cell_size), 2)
 
             if i < self.field_size:
-                num = self.font.render(str(i + 1), True, BLACK)
-                let = self.font.render(self.letters[i], True, BLACK)
+                num = self.font.render(str(i + 1), True, BLUE)
+                let = self.font.render(self.letters[i], True, BLUE)
 
                 num_width = num.get_width()
                 num_height = num.get_height()
@@ -117,15 +118,16 @@ class DrawManager:
                                        top_margin - num_height * 1.5 +
                                        self.offset_for_field * cell_size))
 
-    def make_label(self, text, x_start, y_start, color=BLACK):
+    def make_label(self, text, x_start, y_start, color=BLUE):
         label = self.font.render(text, True, color)
         label_width = label.get_width()
+        print(text, x_start)
         self.screen.blit(label, (x_start - label_width / 2, y_start + 0.25 *
                                  cell_size))
 
     def draw_start_window(self):
         self.screen.fill(WHITE)
-        self.draw_grid()
+        self.draw_grid(LIGHT_BLUE)
         self.draw_button(start_with_friend_btn,
                          (screen_width - btn_width * 2) / 3,
                          (screen_height - btn_height) / 2)
@@ -208,7 +210,7 @@ class DrawManager:
 
     def redraw_field_settings_window(self, field_params):
         self.screen.fill(WHITE)
-        self.draw_grid()
+        self.draw_grid(LIGHT_BLUE)
         self.make_label('Настройте параметры поля', screen_width / 2, cell_size)
         self.make_label('Размер поля', 20 * cell_size, 3 * cell_size)
 
@@ -227,7 +229,7 @@ class DrawManager:
 
     def draw_field_settings_window(self):
         self.screen.fill(WHITE)
-        self.draw_grid()
+        self.draw_grid(LIGHT_BLUE)
         self.make_label('Настройте параметры поля', screen_width / 2, cell_size)
         self.make_label('Размер поля', 20 * cell_size, 3 * cell_size)
 
@@ -253,7 +255,7 @@ class DrawManager:
         pygame.draw.line(self.screen, LIGHT_BLUE,
                          (x_start + cell_size, y_start),
                          (x_start + cell_size, y_start + cell_size))
-        num = self.font.render(str(param + delta), True, BLACK)
+        num = self.font.render(str(param + delta), True, BLUE)
         self.screen.blit(num,
                          (x_start + 2 * cell_size / 2, y_start + 0.25 *
                           cell_size))
@@ -264,20 +266,20 @@ class DrawManager:
         for i in range(len(self.nums_of_ships)):
             if self.nums_of_ships[i] != 0:
                 for j in range(i + 2):
-                    pygame.draw.line(self.screen, BLACK,
+                    pygame.draw.line(self.screen, BLUE,
                                      (x_start, y_start + j * cell_size),
                                      (x_start + cell_size,
-                                      y_start + j * cell_size))
+                                      y_start + j * cell_size), 2)
 
-                pygame.draw.line(self.screen, BLACK, (x_start, y_start),
-                                 (x_start, y_start + j * cell_size))
-                pygame.draw.line(self.screen, BLACK, (x_start + cell_size, y_start),
-                                 (x_start + cell_size, y_start + j * cell_size))
+                pygame.draw.line(self.screen, BLUE, (x_start, y_start),
+                                 (x_start, y_start + j * cell_size), 2)
+                pygame.draw.line(self.screen, BLUE, (x_start + cell_size, y_start),
+                                 (x_start + cell_size, y_start + j * cell_size), 2)
                 x_start += 1.5 * cell_size
 
     def draw_field_window(self, label):
         self.screen.fill(WHITE)
-        self.draw_grid()
+        self.draw_grid(LIGHT_BLUE)
         self.draw_field(middle_offset)
         self.make_label(label, 22 * cell_size, cell_size)
         self.draw_ships_in_game()
@@ -306,22 +308,22 @@ class DrawManager:
         else:
             width = cell_size * len(ship)
             height = cell_size
-        pygame.draw.rect(self.screen, BLACK, ((x, y), (width, height)),
+        pygame.draw.rect(self.screen, BLUE, ((x, y), (width, height)),
                          width=cell_size // 10)
 
     def draw_game_window(self, player1, player2):
         global OFFSETS
         self.screen.fill(WHITE)
-        self.draw_grid()
+        self.draw_grid(LIGHT_BLUE)
         for offset in OFFSETS.values():
             self.draw_field(offset)
             self.update_score(0, offset)
 
-        self.make_label(player1, left_margin + OFFSETS[1] * cell_size, top_margin)
-        self.make_label(player2, left_margin + OFFSETS[2] * cell_size, top_margin)
+        self.make_label(player1, left_margin + (self.field_size // 2 + self.offset_for_field) * cell_size, cell_size)
+        self.make_label(player2, (OFFSETS[2] + self.offset_for_field + self.field_size // 2 + 2) * cell_size, cell_size)
 
     def update_score(self, score, offset):
-        score_label = self.font.render('Очки: {0}'.format(score), True, BLACK)
+        score_label = self.font.render('Очки: {0}'.format(score), True, BLUE)
         score_label_width = score_label.get_width()
         score_label_height = score_label.get_height()
         x_start = left_margin + offset * cell_size + (15 * cell_size - score_label_width) / 2
@@ -331,18 +333,35 @@ class DrawManager:
         self.screen.fill(WHITE, background_rect)
         self.screen.blit(score_label, (x_start, y_start))
 
+    def change_label(self, text):
+        pygame.draw.rect(self.screen, WHITE, (20 * cell_size,
+                                                   17 * cell_size,
+                                                   4 * cell_size, cell_size))
+        pygame.draw.rect(self.screen, LIGHT_BLUE, (20 * cell_size,
+                                                   17 * cell_size,
+                                                   4 * cell_size, cell_size), 1)
+        for i in range(3):
+            pygame.draw.line(self.screen, LIGHT_BLUE, ((21 + i) * cell_size, 17 * cell_size), ((21 + i) * cell_size, 18 * cell_size))
+
+        x_start = 22 * cell_size
+        y_start = 17 * cell_size
+        label = self.font.render(text, True, BLUE)
+        label_width = label.get_width()
+        self.screen.blit(label, (x_start - label_width / 2, y_start + 0.25 *
+         cell_size))
+
     def put_dots(self, dots, offset):
         for (x, y) in dots:
             if x < 1 or y < 1 or x > self.field_size or y > self.field_size:
                 continue
             x_d = x - 0.5 + offset + self.offset_for_field
             y_d = y + self.offset_for_field
-            pygame.draw.circle(self.screen, BLACK,
+            pygame.draw.circle(self.screen, BLUE,
                                (cell_size * x_d + left_margin,
                                 cell_size * (y_d - 0.5) + top_margin),
                                cell_size // 6)
 
-    def put_cross(self, x_start, y_start, color=BLACK):
+    def put_cross(self, x_start, y_start, color=BLUE):
         pygame.draw.line(self.screen, color, (x_start, y_start),
                          (x_start + cell_size, y_start + cell_size),
                          cell_size // 10)
@@ -351,14 +370,14 @@ class DrawManager:
 
     def draw_win_window(self, label):
         self.screen.fill(WHITE)
-        self.draw_grid()
+        self.draw_grid(LIGHT_BLUE)
         self.make_label(label, middle_offset, top_margin, color=RED)
         self.draw_button(restart_btn, (screen_width - btn_width) / 2,
                          (screen_height - btn_height) / 2)
 
     def draw_levels_window(self):
         self.screen.fill(WHITE)
-        self.draw_grid()
+        self.draw_grid(LIGHT_BLUE)
         self.make_label('Выберите уровень сложности', middle_offset, top_margin)
         y_start = (screen_height - 3 * btn_height - 2 * cell_size) / 2
         self.draw_button(level_1_btn, (screen_width - btn_width) / 2,

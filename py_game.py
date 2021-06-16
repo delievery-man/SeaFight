@@ -708,12 +708,10 @@ class Game:
                                 self.shootings[self.enemy_num].killed(fired_cell[0],
                                                             fired_cell[1])
                                 ui.sound_killed.play()
-                                self.drawer.make_label('Убил', 22 * ui.cell_size,
-                                                  17 * ui.cell_size)
+                                self.drawer.change_label('Убил')
                             else:
                                 ui.sound_wounded.play()
-                                self.drawer.make_label('Ранил', 22 * ui.cell_size,
-                                                  17 * ui.cell_size)
+                                self.drawer.change_label('Ранил')
                             if self.is_winner():
                                 self.game_over = True
                                 if GAME_WITH_BOT:
@@ -734,8 +732,7 @@ class Game:
                                 self.shootings[self.player_num].missed(fired_cell[0],
                                                              fired_cell[1])
                                 ui.sound_missed.play()
-                                self.drawer.make_label('Промазал', 22 * ui.cell_size, 17 *
-                                                  ui.cell_size)
+                                self.drawer.change_label('Промазал')
 
             pygame.display.update()
 
