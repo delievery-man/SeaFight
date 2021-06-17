@@ -6,6 +6,7 @@ from ui import UIManager, DrawManager
 
 GAME_WITH_BOT = False
 middle_offset = (ui.screen_width - 15 * ui.cell_size) / 2 / ui.cell_size
+# отступ для рисования поля и кораблей посередине
 offset_for_field = 0
 
 
