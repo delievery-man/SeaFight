@@ -184,9 +184,12 @@ class Bot:
         return random.choice(available)
 
     def do_shot_level_3(self, enemy):
-        for key in enemy.field.ships.keys():
-            if enemy.field.ships[key][0] is False:
-                return key
+        available = []
+        if(len(available)==0):
+            for key in enemy.field.ships.keys():
+                if enemy.field.cells_state[key]:
+                    available.append(key)
+        return random.choice(available)if random.randint(0, 1) == 0 else random.choice(list(enemy.field.cells_state.keys()))
 
 
 class ShootingManager:
@@ -517,6 +520,7 @@ class Game:
         drawing = False
         x_start, y_start = 0, 0
         ship_size = 0, 0
+        start_cell, end_cell = (), ()
 
         # создаем и заполняем список с номерами кораблей, которых нет в игре
         ships_stop_list = []
@@ -597,49 +601,11 @@ class Game:
                     x_end, y_end = event.pos
                     ship_size = 0, 0
                     drawing = False
-                    # определяем его начальную и конечную точку на поле
-                    start_cell = (int((x_start) / ui.cell_size
-                                      + 1 - offset_for_field - middle_offset),
-                                  int((y_start - ui.top_margin) / ui.cell_size
-                                      + 1 - offset_for_field))
-                    end_cell = (int((x_end) / ui.cell_size
-                                    + 1 - offset_for_field - middle_offset),
-                                int((y_end - ui.top_margin) / ui.cell_size
-                                    + 1 - offset_for_field))
-                    if start_cell > end_cell:
-                        start_cell, end_cell = end_cell, start_cell
+                    start_cell, end_cell = self.set_start_end_cells(x_end, x_start, y_start, y_end)
                     temp_ship = []
-
                     # проверяем, что не зашли за границы поля
-                    if 1 <= start_cell[0] <= self.uiManager.field_params.field_size \
-                            and 1 <= start_cell[1] <= self.uiManager.field_params.field_size \
-                            and 1 <= end_cell[0] <= self.uiManager.field_params.field_size \
-                            and 1 <= end_cell[1] <= self.uiManager.field_params.field_size:
+                    self.check_borders(start_cell, end_cell, ships_stop_list, temp_ship, player)
 
-                        if end_cell[0] - start_cell[0] + 1 in ships_stop_list \
-                                and end_cell[1] - start_cell[1] + 1 in \
-                                ships_stop_list:
-                            continue
-                        else:
-                            if start_cell[0] == end_cell[0]:
-                                for cell in range(start_cell[1],
-                                                  end_cell[1] + 1):
-                                    temp_ship.append((start_cell[0], cell))
-                            elif start_cell[1] == end_cell[1]:
-                                for cell in range(start_cell[0],
-                                                  end_cell[0] + 1):
-                                    temp_ship.append((cell, start_cell[1]))
-                    # если кораль есть и его можно нарисовать, сохраняем его в
-                    # список кораблей, которые будем рисовать (ships_to_draw)
-                    if temp_ship and \
-                            self.players[player].field.is_ship_can_be_put(
-                                temp_ship) and \
-                            self.drawn_ships[len(temp_ship) - 1] < \
-                            self.uiManager.field_params.nums_of_ships[
-                                len(temp_ship) - 1]:
-                        self.players[player].field.add_ship(temp_ship)
-                        self.drawn_ships[len(temp_ship) - 1] += 1
-                        self.ships_to_draw.append(temp_ship)
                 # проверяем что нарисовали уже все корабли
                 if len(self.ships_to_draw) == self.uiManager.field_params.total_amount_of_ships:
                     self.ships_created = True
@@ -656,11 +622,59 @@ class Game:
                         self.drawer.draw_ship(ship, 1)
             pygame.display.update()
 
+
+
+    def set_start_end_cells(self, x_end, x_start, y_start, y_end):
+        start_cell = (int((x_start) / ui.cell_size
+                          + 1 - offset_for_field - middle_offset),
+                      int((y_start - ui.top_margin) / ui.cell_size
+                          + 1 - offset_for_field))
+        end_cell = (int((x_end) / ui.cell_size
+                        + 1 - offset_for_field - middle_offset),
+                    int((y_end - ui.top_margin) / ui.cell_size
+                        + 1 - offset_for_field))
+        if start_cell > end_cell:
+            start_cell, end_cell = end_cell, start_cell
+        return (start_cell, end_cell)
+
+    def check_borders(self, start_cell, end_cell, ships_stop_list, temp_ship, player):
+        # проверяем, что не зашли за границы поля
+        if 1 <= start_cell[0] <= self.uiManager.field_params.field_size \
+                and 1 <= start_cell[1] <= self.uiManager.field_params.field_size \
+                and 1 <= end_cell[0] <= self.uiManager.field_params.field_size \
+                and 1 <= end_cell[1] <= self.uiManager.field_params.field_size:
+
+            if end_cell[0] - start_cell[0] + 1 in ships_stop_list \
+                    and end_cell[1] - start_cell[1] + 1 in \
+                    ships_stop_list:
+                return
+            else:
+                if start_cell[0] == end_cell[0]:
+                    for cell in range(start_cell[1],
+                                      end_cell[1] + 1):
+                        temp_ship.append((start_cell[0], cell))
+                elif start_cell[1] == end_cell[1]:
+                    for cell in range(start_cell[0],
+                                      end_cell[0] + 1):
+                        temp_ship.append((cell, start_cell[1]))
+        if temp_ship and \
+                self.players[player].field.is_ship_can_be_put(
+                    temp_ship) and \
+                self.drawn_ships[len(temp_ship) - 1] < \
+                self.uiManager.field_params.nums_of_ships[
+                    len(temp_ship) - 1]:
+            self.players[player].field.add_ship(temp_ship)
+            self.drawn_ships[len(temp_ship) - 1] += 1
+            self.ships_to_draw.append(temp_ship)
+
+
     # передается ход
     def change_turn(self):
         self.player_num, self.enemy_num = self.enemy_num, self.player_num
         if GAME_WITH_BOT:
             self.bot_turn = not self.bot_turn
+
+
 
     # возвращает True, если текущий игрок стал победителем
     def is_winner(self):
@@ -726,11 +740,13 @@ class Game:
                                 self.drawer.put_dynamic_label(ui.Label(
                                     'Убил', (22 * ui.cell_size,
                                              17 * ui.cell_size), ui.WHITE))
+
                             else:
                                 ui.sound_wounded.play()
                                 self.drawer.put_dynamic_label(ui.Label(
                                     'Ранил', (22 * ui.cell_size,
                                              17 * ui.cell_size), ui.WHITE))
+
                             if self.is_winner():
                                 self.game_over = True
                                 if GAME_WITH_BOT:
@@ -759,6 +775,7 @@ class Game:
                                 self.drawer.put_dynamic_label(ui.Label(
                                     'Промазал', (22 * ui.cell_size,
                                              17 * ui.cell_size), ui.WHITE))
+
 
             pygame.display.update()
 
