@@ -10,13 +10,13 @@ cell_size = 30
 left_margin = 60
 top_margin = 90
 screen_width, screen_height = left_margin * 2 + cell_size * 40, \
-                              top_margin * 2 + cell_size * 16
+                              top_margin * 2 + cell_size * 17
 btn_width, btn_height = 180, 60
 
 OFFSETS = {1: 3,
            2: 26}
 
-middle_offset = (screen_width - 15 * cell_size) / 2 / cell_size  # отступ для
+middle_offset = (screen_width - 15 * cell_size) / 2 / cell_size # отступ для
 # рисования поля посередине
 
 pygame.init()
@@ -37,6 +37,7 @@ sound_wounded = pygame.mixer.Sound('shot.mp3')
 sound_wounded.set_volume(2)
 sound_killed = pygame.mixer.Sound('killed-shot.mp3')
 sound_killed.set_volume(1.3)
+
 
 class FieldParams:
     def __init__(self):
@@ -89,14 +90,31 @@ class Window:
         for label in labels:
             self.labels.append(label)
 
+    def clear_labels(self):
+        self.labels = []
+
+    def clear_buttons(self):
+        self.buttons = []
+
 
 class UIManager:
     # тут создаются и хранятся все кнопки и окна. лейблы как переменные не
     # хранятся.
     def __init__(self):
         self.field_params = FieldParams()
+        self.drawer = DrawManager(self.field_params)
         self.create_buttons()
         self.create_windows()
+        self.windows_order = {
+            0: self.start_window,
+            1: self.levels_window,
+            2: self.settings_window,
+            3: self.create_window,
+            4: self.create_window,
+            5: self.game_window,
+            6: self.win_window
+        }
+        self.window_number = -1
 
     # координаты полежения кнопок с плюсами минусами в окне настроек зависят
     # от размера поля, поэтому при изменении размера поля их нужно
@@ -197,25 +215,22 @@ class UIManager:
         self.win_window = Window()
         self.win_window.add_buttons(self.restart_button)
 
-    # обновляет поле настроек когда мы меняем его размер
-    def reset_settings_window(self):
-        self.set_plus_minus_btns_params()
-        self.settings_window.buttons = []
-        self.settings_window.add_buttons(self.plus_size_button,
-                                         self.minus_size_btn, self.next_button)
-        for button in self.plus_minus_buttons:
-            self.settings_window.add_buttons(button)
+    def next_window(self, delta=1):
+        self.window_number += delta
+        self.drawer.show_window(self.windows_order[self.window_number])
+
+    def go_back(self, win_num):
+        self.window_number = win_num
+        self.drawer.show_window(self.windows_order[self.window_number])
 
 
 class DrawManager:
     def __init__(self, field_params):
-        self.update(field_params)
-
-    def update(self, field_params):
-        self.field_size = field_params.field_size
-        self.offset_for_field = field_params.offset
-        self.nums_of_ships = field_params.nums_of_ships
-        self.letters = [chr(i) for i in range(65, 65 + self.field_size)]
+        self.field_params = field_params
+        self.x_player, self.y_player = (OFFSETS[1] + self.field_params.field_size / 2
+                              + self.field_params.offset) * cell_size, cell_size
+        self.x_enemy, self.y_enemy = (OFFSETS[2] + self.field_params.field_size / 2
+                            + self.field_params.offset) * cell_size, cell_size
 
     # отображает окно
     def show_window(self, window):
@@ -261,8 +276,8 @@ class DrawManager:
 
     # для надписей которые меняются во время игры (сообщения об ошибках, очки,
     # промазал/убил/ранил).
-    def put_dynamic_label(self, label):
-        pygame.draw.rect(screen, BUTTON_BLUE, (label.x_start - label.width / 2
+    def put_dynamic_label(self, label, color=BUTTON_BLUE):
+        pygame.draw.rect(screen, color, (label.x_start - label.width / 2
                                                - cell_size, label.y_start,
                                                label.width + 2 * cell_size,
                                                cell_size))
@@ -273,12 +288,12 @@ class DrawManager:
     def put_params_labels(self):
         self.update_param(-1, left_margin + 21 * cell_size, 3 * cell_size)
 
-        x_start = left_margin + (self.field_size + 2) * cell_size
+        x_start = left_margin + (self.field_params.field_size + 2) * cell_size
         y_start = 5 * cell_size
-        if self.field_size % 2 == 0:
-            middle = self.field_size // 2
+        if self.field_params.field_size % 2 == 0:
+            middle = self.field_params.field_size // 2
         else:
-            middle = self.field_size // 2 + 1
+            middle = self.field_params.field_size // 2 + 1
 
         start, end = 0, middle
         for j in range(2):
@@ -287,7 +302,7 @@ class DrawManager:
                 y_start += 2 * cell_size
             x_start += 21 * cell_size
             y_start = 5 * cell_size
-            start, end = middle, self.field_size
+            start, end = middle, self.field_params.field_size
 
     # вызывается из предыдущего метода. конкретон отрисовывает один параметр
     def update_param(self, ship_num, x_start, y_start):
@@ -300,22 +315,39 @@ class DrawManager:
                          (x_start + cell_size, y_start),
                          (x_start + cell_size, y_start + cell_size))
         if ship_num == -1:
-            self.put_static_label(Label(str(self.field_size),
+            self.put_static_label(Label(str(self.field_params.field_size),
                                         (x_start + cell_size, y_start), BLUE))
         else:
-            self.put_static_label(Label(str(self.nums_of_ships[ship_num]),
+            self.put_static_label(Label(str(self.field_params.nums_of_ships[ship_num]),
                                         (x_start + cell_size, y_start),
                                         BLUE))
+
+    def update_turn(self, player_label, enemy_label, change=True):
+        if change:
+            self.x_player, self.x_enemy = self.x_enemy, self.x_player
+            self.y_player, self.y_enemy = self.y_enemy, self.y_player
+        self.put_dynamic_label(Label(enemy_label, (self.x_player, self.y_player), WHITE))
+        self.put_dynamic_label(Label(player_label, (self.x_enemy, self.y_enemy), BUTTON_BLUE), WHITE)
+
+    def last_move(self, fired_cell, damage, player_num):
+        letters = [chr(i) for i in
+                   range(65, 65 + self.field_params.field_size)]
+        let, num = letters[fired_cell[0] - 1], fired_cell[1]
+        self.put_dynamic_label(Label(
+            '({0}, {1}) - {2}'.format(let, num, damage),
+            ((OFFSETS[player_num] + self.field_params.field_size / 2 +
+              self.field_params.offset) * cell_size, screen_height - 4 *
+             cell_size)), WHITE)
 
     # рисует корабли в окне настроек
     def draw_ship_examples(self):
         y_start = 5 * cell_size
         x_start = left_margin
 
-        if self.field_size % 2 == 0:
-            middle = self.field_size // 2
+        if self.field_params.field_size % 2 == 0:
+            middle = self.field_params.field_size // 2
         else:
-            middle = self.field_size // 2 + 1
+            middle = self.field_params.field_size // 2 + 1
 
         start, end = 1, middle + 1
         for x in range(2):
@@ -334,55 +366,52 @@ class DrawManager:
                                  2)
                 y_start += 2 * cell_size
 
-            start, end = middle + 1, self.field_size + 1
+            start, end = middle + 1, self.field_params.field_size + 1
             y_start = 5 * cell_size
             x_start += 21 * cell_size
 
     # рисует поле
     def draw_field(self, offset):
-        for i in range(self.field_size + 1):
+        letters = [chr(i) for i in range(65, 65 + self.field_params.field_size)]
+        x_start = (offset + self.field_params.offset) * cell_size
+        y_start = top_margin + self.field_params.offset * cell_size
+        pygame.draw.rect(screen, WHITE,
+                         (x_start, y_start, self.field_params.field_size *
+                          cell_size, self.field_params.field_size * cell_size))
+        for i in range(self.field_params.field_size + 1):
+            # горизонтальные линии
             pygame.draw.line(screen, BLUE,
-                             ((offset + self.offset_for_field) * cell_size,
-                              top_margin + (i + self.offset_for_field) *
-                              cell_size), ((offset + self.field_size +
-                                            self.offset_for_field) * cell_size,
-                                           top_margin +
-                                           (i + self.offset_for_field) *
-                                           cell_size), 2)
-
+                             (x_start, y_start + i * cell_size),
+                             (x_start + self.field_params.field_size *
+                              cell_size, y_start + i * cell_size), 2)
+            # вертикальные линии
             pygame.draw.line(screen, BLUE,
-                             ((i + offset + self.offset_for_field) * cell_size,
-                              top_margin + self.offset_for_field * cell_size),
-                             ((i + offset + self.offset_for_field) * cell_size,
-                              top_margin + (self.field_size +
-                                            self.offset_for_field) *
-                              cell_size), 2)
+                             (x_start + i * cell_size, y_start),
+                             (x_start + i * cell_size, y_start +
+                              self.field_params.field_size * cell_size), 2)
 
-            if i < self.field_size:
+            if i < self.field_params.field_size:
                 num = font.render(str(i + 1), True, BLUE)
-                let = font.render(self.letters[i], True, BLUE)
+                let = font.render(letters[i], True, BLUE)
 
                 num_width = num.get_width()
                 num_height = num.get_height()
                 let_width = let.get_width()
 
-                screen.blit(num, ((offset + self.offset_for_field) * cell_size
-                                  - (cell_size // 2 + num_width // 2),
-                                  top_margin + (i + self.offset_for_field) *
-                                  cell_size + (cell_size // 2 - num_height
-                                               // 2)))
+                screen.blit(num, (x_start - (cell_size // 2 + num_width // 2),
+                                  y_start + i * cell_size + (cell_size // 2 -
+                                                             num_height // 2)))
 
-                screen.blit(let, ((i + self.offset_for_field) * cell_size +
-                                  (cell_size // 2 - let_width // 2) +
-                                  offset * cell_size, top_margin - num_height
-                                  * 1.5 + self.offset_for_field * cell_size))
+                screen.blit(let, (x_start + i * cell_size +
+                                  (cell_size // 2 - let_width // 2),
+                                  y_start - num_height * 1.5))
 
     # рисует корабли, участвующие в игре, в окне создания поля
     def draw_ships_in_game(self):
         x_start = cell_size
         y_start = cell_size
-        for i in range(len(self.nums_of_ships)):
-            if self.nums_of_ships[i] != 0:
+        for i in range(len(self.field_params.nums_of_ships)):
+            if self.field_params.nums_of_ships[i] != 0:
                 for j in range(i + 2):
                     pygame.draw.line(screen, BLUE,
                                      (x_start, y_start + j * cell_size),
@@ -405,30 +434,31 @@ class DrawManager:
         offset = middle_offset
         ship.sort(key=lambda i: i[1])
         x = cell_size * (ship[0][0] - 1) + \
-            (offset + self.offset_for_field) * cell_size
+            (offset + self.field_params.offset) * cell_size
         y = cell_size * (ship[0][
                              1] - 1) + top_margin + \
-            self.offset_for_field * cell_size
+            self.field_params.offset * cell_size
         if turn == 1:
             width = cell_size
             height = cell_size * len(ship)
         else:
             width = cell_size * len(ship)
             height = cell_size
-        pygame.draw.rect(screen, BLUE, ((x, y), (width, height)),
-                         width=cell_size // 10)
+        pygame.draw.rect(screen, BUTTON_BLUE, (x, y, width, height))
+        # pygame.draw.rect(screen, BLUE, ((x, y), (width, height)),
+        #                  width=cell_size // 10)
 
     # обновляет лейб с очками
     def update_score(self, score, player_num):
-        self.put_dynamic_label(Label('Очки: {0}'.format(score), ((OFFSETS[player_num] + self.field_size / 2 + self.offset_for_field) * cell_size, screen_height - 2 * cell_size), WHITE))
+        self.put_dynamic_label(Label('Очки: {0}'.format(score), ((OFFSETS[player_num] + self.field_params.field_size / 2 + self.field_params.offset) * cell_size, screen_height - 2 * cell_size), WHITE))
 
     # рисует кружочки
     def put_dots(self, dots, offset):
         for (x, y) in dots:
-            if x < 1 or y < 1 or x > self.field_size or y > self.field_size:
+            if x < 1 or y < 1 or x > self.field_params.field_size or y > self.field_params.field_size:
                 continue
-            x_d = x - 0.5 + offset + self.offset_for_field
-            y_d = y + self.offset_for_field
+            x_d = x - 0.5 + offset + self.field_params.offset
+            y_d = y + self.field_params.offset
             pygame.draw.circle(screen, BLUE,
                                (cell_size * x_d,
                                 cell_size * (y_d - 0.5) + top_margin),
@@ -442,6 +472,7 @@ class DrawManager:
                          cell_size // 10)
         pygame.draw.line(screen, color, (x_start, y_start + cell_size),
                          (x_start + cell_size, y_start), cell_size // 10)
+
 
 
 
