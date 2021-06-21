@@ -311,20 +311,60 @@ class Game:
 
     # сам процесс игры. по очереди все методы - этапы игры.
     def play_game(self):
+        self.change_to_choose_mode()
+        # self.choose_mode()
+        # self.choose_level()
+        # self.setup_field()
+        # self.create_field(1)
+        # if not GAME_WITH_BOT and self.ships_created:
+        #     self.field_made = False
+        #     self.ships_created = False
+        #     self.create_field(2)
+        # self.play()
+        # self.finish()
+
+    def change_to_choose_mode(self, go_back=False, delta=1):
+        if go_back:
+            self.uiManager.go_back(delta)
+        else:
+            self.uiManager.next_window(0)
+        self.game_start = False
         self.choose_mode()
+
+    def change_to_choose_level(self, go_back=False):
+        if go_back:
+            self.uiManager.go_back()
+        else:
+            self.uiManager.next_window()
+        self.level_chosen = False
         self.choose_level()
-        self.set_labels()
-        self.set_players()
-        self.set_shootings()
+
+    def change_to_setup_field(self, go_back=False, delta=1):
+        if go_back:
+            self.uiManager.go_back()
+        else:
+            self.uiManager.next_window(delta)
+        self.field_set_up = False
         self.setup_field()
-        self.create_field(1)
-        if not GAME_WITH_BOT and self.ships_created:
-            self.field_made = False
-            self.ships_created = False
-            self.create_field(2)
-        for p in self.players.values():
-            p.field.set_cells_state()
+
+    def change_to_create_field(self, player, go_back=False):
+        self.uiManager.create_window.clear_labels()
+        self.uiManager.create_window.add_labels(
+            ui.Label(self.labels[player], (22 * ui.cell_size, ui.cell_size)))
+        if go_back:
+            self.uiManager.go_back()
+        else:
+            self.uiManager.next_window()
+        self.field_made = False
+        self.ships_created = False
+        self.create_field(player)
+
+    def change_to_play_game(self, delta=1):
+        self.uiManager.next_window(delta)
         self.play()
+
+    def change_to_finish(self):
+        self.uiManager.next_window()
         self.finish()
 
     # вызывается когда мы нажимаем на выходи из игры (чтобы в каждом цикле
@@ -346,9 +386,6 @@ class Game:
         else:
             self.labels = {1: 'Игрок 1',
                            2: 'Игрок 2'}
-        # и отправляются в окна, где они будут отображаться
-        self.uiManager.create_window.add_labels(
-            ui.Label(self.labels[1], (22 * ui.cell_size, ui.cell_size)))
 
     # создается словарь с игроками в зависимости от режима игры
     def set_players(self):
@@ -369,7 +406,7 @@ class Game:
     # метод для окна с выбором режима игры
     def choose_mode(self):
         global GAME_WITH_BOT
-        self.uiManager.next_window()
+        self.uiManager.next_window(0)
         while not self.game_start:
             mouse = pygame.mouse.get_pos()
             for event in pygame.event.get():
@@ -378,14 +415,21 @@ class Game:
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if self.uiManager.start_with_friend_button.rect.\
                             collidepoint(mouse):
+                        GAME_WITH_BOT = False
                         self.game_start = True
                         self.level_chosen = True
-                        self.uiManager.next_window(2)
+                        self.set_labels()
+                        self.set_players()
+                        self.set_shootings()
+                        self.change_to_setup_field(delta=2)
                     elif self.uiManager.start_with_computer_button.rect.\
                             collidepoint(mouse):
                         GAME_WITH_BOT = True
                         self.game_start = True
-                        self.uiManager.next_window()
+                        self.set_labels()
+                        self.set_players()
+                        self.set_shootings()
+                        self.change_to_choose_level()
             pygame.display.update()
 
     # метод для окна с выбором уровня бота. открывается,
@@ -396,30 +440,29 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.quit_game()
-                elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.level_1_button.rect.\
-                        collidepoint(mouse):
-                    self.level = 1
-                    self.level_chosen = True
-                    self.uiManager.game_window.add_labels(ui.Label(
-                        'Лёгкий уровень', (22 * ui.cell_size, ui.cell_size)))
-                    self.uiManager.next_window()
-                elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.level_2_button.rect.\
-                        collidepoint(mouse):
-                    self.level = 2
-                    self.level_chosen = True
-                    self.uiManager.game_window.add_labels(ui.Label(
-                        'Средний уровень', (22 * ui.cell_size, ui.cell_size)))
-                    self.uiManager.next_window()
-                elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.level_3_button.rect.\
-                        collidepoint(mouse):
-                    self.level = 3
-                    self.level_chosen = True
-                    self.uiManager.game_window.add_labels(ui.Label(
-                        'Сложный уровень', (22 * ui.cell_size, ui.cell_size)))
-                    self.uiManager.next_window()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+
+                    if self.uiManager.level_1_button.rect.collidepoint(mouse):
+                        self.level = 1
+                        self.level_chosen = True
+                        self.uiManager.game_window.add_labels(ui.Label(
+                            'Лёгкий уровень', (22 * ui.cell_size, ui.cell_size)))
+                        self.change_to_setup_field()
+                    elif self.uiManager.level_2_button.rect.collidepoint(mouse):
+                        self.level = 2
+                        self.level_chosen = True
+                        self.uiManager.game_window.add_labels(ui.Label(
+                            'Средний уровень', (22 * ui.cell_size, ui.cell_size)))
+                        self.change_to_setup_field()
+                    elif self.uiManager.level_3_button.rect.collidepoint(mouse):
+                        self.level = 3
+                        self.level_chosen = True
+                        self.uiManager.game_window.add_labels(ui.Label(
+                            'Сложный уровень', (22 * ui.cell_size, ui.cell_size)))
+                        self.change_to_setup_field()
+                    elif self.uiManager.back_button.rect.collidepoint(mouse):
+                        self.level_chosen = True
+                        self.change_to_choose_mode(True)
             pygame.display.update()
 
     # проверяет не нажата ли кнопка + или - в окне с настройками
@@ -450,7 +493,7 @@ class Game:
         self.uiManager.set_plus_minus_btns_params()
         self.uiManager.settings_window.clear_buttons()
         self.uiManager.settings_window.add_buttons(
-            self.uiManager.plus_size_button,
+            self.uiManager.plus_size_button, self.uiManager.back_button,
             self.uiManager.minus_size_btn, self.uiManager.next_button)
         for button in self.uiManager.plus_minus_buttons:
             self.uiManager.settings_window.add_buttons(button)
@@ -520,8 +563,8 @@ class Game:
                             self.field_set_up = True
                             self.uiManager.field_params.update_params()
                             self.uiManager.drawer = DrawManager(self.uiManager.field_params)
-                            self.uiManager.next_window()
                             offset_for_field = self.uiManager.field_params.offset
+                            self.change_to_create_field(1)
                         # если не верны, то выводим сообщение о
                         # соответствующей ошибке
                         else:
@@ -535,6 +578,11 @@ class Game:
                                     'Слишком мало кораблей',
                                     (22 * ui.cell_size, ui.screen_height - 2
                                      * ui.cell_size), ui.RED))
+                    elif self.uiManager.back_button.rect.collidepoint(mouse):
+                        if GAME_WITH_BOT:
+                            self.change_to_choose_level(True)
+                        else:
+                            self.change_to_choose_mode(True, 2)
                     else:
                         # проверяем кнопки + и -
                         self.check_buttons(mouse)
@@ -600,7 +648,7 @@ class Game:
         x_start, y_start = 0, 0
         ship_size = 0, 0
         start_cell, end_cell = (), ()
-
+        self.redraw_field(player)
         # создаем и заполняем список с номерами кораблей, которых нет в игре
         ships_stop_list = []
         for n in range(len(
@@ -624,17 +672,20 @@ class Game:
                         if GAME_WITH_BOT:
                             self.players[2].field.generate_ships(self.uiManager.drawer,
                                                                  self.uiManager)
-                            self.uiManager.next_window(2)
+                            self.change_to_play_game(2)
                         # если с другом, то на следующее окно создания
                         else:
-                            self.uiManager.create_window.clear_labels()
-                            self.uiManager.create_window.add_labels(
-                                ui.Label(self.labels[2],
-                                         (22 * ui.cell_size, ui.cell_size)))
-                            self.uiManager.next_window()
+                            self.change_to_create_field(2)
                     # если мы уже на втором окне, то переходим к игре
                     else:
-                        self.uiManager.next_window()
+                        self.change_to_play_game()
+
+                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.back_button.rect.collidepoint(mouse):
+                    self.field_made = True
+                    if player == 2:
+                        self.change_to_create_field(1, True)
+                    else:
+                        self.change_to_setup_field(True)
 
                 # если нажата кнопка 'сгенерировать рандомно'
                 elif event.type == pygame.MOUSEBUTTONDOWN \
@@ -754,7 +805,7 @@ class Game:
                     self.player_num),
                     (ui.screen_width / 2,
                      2 * ui.cell_size)))
-        self.uiManager.next_window()
+        self.change_to_finish()
 
     def miss(self, fired_cell):
         self.change_turn()
@@ -779,6 +830,8 @@ class Game:
                 self.uiManager.drawer.update_score(
                     self.players[self.player_num].score,
                     self.player_num)
+                self.shootings[self.enemy_num].wounded(fired_cell[0],
+                                                       fired_cell[1])
 
                 # если убили корабль
                 if self.shootings[self.enemy_num].is_killed(fired_cell[0],
@@ -800,6 +853,9 @@ class Game:
         self.uiManager.drawer.update_score(0, 2)
         self.uiManager.drawer.update_turn(self.labels[self.enemy_num],
                                           self.labels[self.player_num], False)
+
+        for p in self.players.values():
+            p.field.set_cells_state()
 
         while not self.game_over:
             for event in pygame.event.get():

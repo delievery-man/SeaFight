@@ -114,7 +114,7 @@ class UIManager:
             5: self.game_window,
             6: self.win_window
         }
-        self.window_number = -1
+        self.window_number = 0
 
     # координаты полежения кнопок с плюсами минусами в окне настроек зависят
     # от размера поля, поэтому при изменении размера поля их нужно
@@ -163,6 +163,8 @@ class UIManager:
         self.next_button = Button(
             'Дальше', (screen_width - left_margin - btn_width,
                        screen_height - 3 * cell_size))
+        self.back_button = Button(
+            'Назад', (left_margin, screen_height - 3 * cell_size))
         self.random_button = Button(
             'Расставить рандомно', (screen_width - left_margin - btn_width,
                                     top_margin + 1.5 * btn_height))
@@ -191,13 +193,15 @@ class UIManager:
 
         self.levels_window = Window()
         self.levels_window.add_buttons(
-            self.level_1_button, self.level_2_button, self.level_3_button)
+            self.level_1_button, self.level_2_button, self.level_3_button,
+            self.back_button)
         self.levels_window.add_labels(Label('Выберите уровень сложности',
                                             (screen_width / 2, top_margin)))
 
         self.settings_window = Window()
         self.settings_window.add_buttons(self.plus_size_button,
-                                         self.minus_size_btn, self.next_button)
+                                         self.minus_size_btn, self.next_button,
+                                         self.back_button)
         self.settings_window.add_labels(Label('Настройте параметры поля',
                                               (screen_width / 2, cell_size)))
         for b in self.plus_minus_buttons:
@@ -206,7 +210,7 @@ class UIManager:
         self.create_window = Window()
         self.create_window.add_buttons(self.next_button, self.random_button,
                                        self.manual_button, self.cancel_button,
-                                       self.clear_button)
+                                       self.clear_button, self.back_button)
         self.create_window.fields = 1
 
         self.game_window = Window()
@@ -219,8 +223,8 @@ class UIManager:
         self.window_number += delta
         self.drawer.show_window(self.windows_order[self.window_number])
 
-    def go_back(self, win_num):
-        self.window_number = win_num
+    def go_back(self, delta=1):
+        self.window_number -= delta
         self.drawer.show_window(self.windows_order[self.window_number])
 
 
@@ -244,6 +248,7 @@ class DrawManager:
             self.draw_field(middle_offset)
             self.draw_ships_in_game()
         elif window.fields == 2:
+            print('im here')
             self.draw_field(OFFSETS[1])
             self.draw_field(OFFSETS[2])
 
