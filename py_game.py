@@ -297,6 +297,8 @@ class Game:
         self.bot_turn = False
         self.game_over = False
         self.game_finished = False
+        self.game_paused = False
+        # self.quit_menu = False
 
         self.uiManager = UIManager()
         self.labels = {}
@@ -309,19 +311,8 @@ class Game:
         self.drawn_ships = [0 for i in range(15)]
         self.scene_number = 0
 
-    # сам процесс игры. по очереди все методы - этапы игры.
     def play_game(self):
         self.change_to_choose_mode()
-        # self.choose_mode()
-        # self.choose_level()
-        # self.setup_field()
-        # self.create_field(1)
-        # if not GAME_WITH_BOT and self.ships_created:
-        #     self.field_made = False
-        #     self.ships_created = False
-        #     self.create_field(2)
-        # self.play()
-        # self.finish()
 
     def change_to_choose_mode(self, go_back=False, delta=1):
         if go_back:
@@ -359,9 +350,19 @@ class Game:
         self.ships_created = False
         self.create_field(player)
 
-    def change_to_play_game(self, delta=1):
-        self.uiManager.next_window(delta)
+    def change_to_play_game(self, go_back=False, delta=1):
+        if go_back:
+            self.uiManager.go_back(delta)
+        else:
+            self.uiManager.next_window(delta)
+        self.game_over = False
+        self.game_paused = False
         self.play()
+
+    # def change_to_menu(self):
+    #     self.uiManager.next_window()
+    #     self.quit_menu = False
+    #     self.menu()
 
     def change_to_finish(self):
         self.uiManager.next_window()
@@ -377,9 +378,10 @@ class Game:
         self.bot_turn = True
         self.game_over = True
         self.game_finished = True
+        # self.quit_menu = True
 
+    # выбираются подписи к полям в зависимости от режима игры
     def set_labels(self):
-        # выбираются подписи к полям в зависимости от режима игры
         if GAME_WITH_BOT:
             self.labels = {1: 'Ваше поле',
                            2: 'Поле компьютера'}
@@ -403,34 +405,43 @@ class Game:
                           2: ShootingManager(2, self.players[2],
                                              self.uiManager.drawer)}
 
+    def set_mode(self, bot):
+        global GAME_WITH_BOT
+        GAME_WITH_BOT = bot
+        self.game_start = True
+        self.set_labels()
+        self.set_players()
+        self.set_shootings()
+        if not GAME_WITH_BOT:
+            self.change_to_setup_field(delta=2)
+        else:
+            self.change_to_choose_level()
+
     # метод для окна с выбором режима игры
     def choose_mode(self):
-        global GAME_WITH_BOT
-        self.uiManager.next_window(0)
         while not self.game_start:
             mouse = pygame.mouse.get_pos()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.uiManager.start_with_friend_button.rect.\
+                    if self.uiManager.start_with_friend_btn.rect.\
                             collidepoint(mouse):
-                        GAME_WITH_BOT = False
-                        self.game_start = True
-                        self.level_chosen = True
-                        self.set_labels()
-                        self.set_players()
-                        self.set_shootings()
-                        self.change_to_setup_field(delta=2)
-                    elif self.uiManager.start_with_computer_button.rect.\
+                        self.set_mode(False)
+                    elif self.uiManager.start_with_computer_btn.rect.\
                             collidepoint(mouse):
-                        GAME_WITH_BOT = True
-                        self.game_start = True
-                        self.set_labels()
-                        self.set_players()
-                        self.set_shootings()
-                        self.change_to_choose_level()
+                        self.set_mode(True)
             pygame.display.update()
+
+    def set_level(self, level):
+        labels = {
+            1: ui.Label('Лёгкий уровень', (22 * ui.cell_size, ui.cell_size)),
+            2: ui.Label('Средний уровень', (22 * ui.cell_size, ui.cell_size)),
+            3: ui.Label('Сложный уровень', (22 * ui.cell_size, ui.cell_size))}
+        self.level = level
+        self.level_chosen = True
+        self.uiManager.game_window.add_labels(labels[level])
+        self.change_to_setup_field()
 
     # метод для окна с выбором уровня бота. открывается,
     # если мы выбрали играть с ботом
@@ -441,29 +452,22 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-
-                    if self.uiManager.level_1_button.rect.collidepoint(mouse):
-                        self.level = 1
-                        self.level_chosen = True
-                        self.uiManager.game_window.add_labels(ui.Label(
-                            'Лёгкий уровень', (22 * ui.cell_size, ui.cell_size)))
-                        self.change_to_setup_field()
-                    elif self.uiManager.level_2_button.rect.collidepoint(mouse):
-                        self.level = 2
-                        self.level_chosen = True
-                        self.uiManager.game_window.add_labels(ui.Label(
-                            'Средний уровень', (22 * ui.cell_size, ui.cell_size)))
-                        self.change_to_setup_field()
-                    elif self.uiManager.level_3_button.rect.collidepoint(mouse):
-                        self.level = 3
-                        self.level_chosen = True
-                        self.uiManager.game_window.add_labels(ui.Label(
-                            'Сложный уровень', (22 * ui.cell_size, ui.cell_size)))
-                        self.change_to_setup_field()
-                    elif self.uiManager.back_button.rect.collidepoint(mouse):
+                    if self.uiManager.level_1_btn.rect.collidepoint(mouse):
+                        self.set_level(1)
+                    elif self.uiManager.level_2_btn.rect.collidepoint(mouse):
+                        self.set_level(2)
+                    elif self.uiManager.level_3_btn.rect.collidepoint(mouse):
+                        self.set_level(3)
+                    elif self.uiManager.back_btn.rect.collidepoint(mouse):
                         self.level_chosen = True
                         self.change_to_choose_mode(True)
             pygame.display.update()
+
+    def change_param(self, i, delta):
+        self.uiManager.field_params.nums_of_ships[i // 2] += delta
+        self.uiManager.field_params.update_params()
+        self.uiManager.drawer = DrawManager(self.uiManager.field_params)
+        self.uiManager.drawer.put_params_labels()
 
     # проверяет не нажата ли кнопка + или - в окне с настройками
     # (кроме + и - для раземра поля)
@@ -476,25 +480,19 @@ class Game:
             if minus_btn.rect.collidepoint(mouse):
                 if self.uiManager.field_params.nums_of_ships[i // 2] == 0:
                     continue
-                self.uiManager.field_params.nums_of_ships[i // 2] -= 1
-                self.uiManager.field_params.update_params()
-                self.uiManager.drawer = DrawManager(self.uiManager.field_params)
-                self.uiManager.drawer.put_params_labels()
+                self.change_param(i, -1)
             # если кнопка + нажата, увеличиваем количество соответствующих
             # кораблей, обновляем везде параметры
             elif plus_btn.rect.collidepoint(mouse):
-                self.uiManager.field_params.nums_of_ships[i // 2] += 1
-                self.uiManager.field_params.update_params()
-                self.uiManager.drawer = DrawManager(self.uiManager.field_params)
-                self.uiManager.drawer.put_params_labels()
+                self.change_param(i, 1)
 
     # обновляет окно с настройками, после того, как меняется рзамер поля
     def update_settings_window(self):
-        self.uiManager.set_plus_minus_btns_params()
+        self.uiManager.set_plus_minus_buttons_params()
         self.uiManager.settings_window.clear_buttons()
         self.uiManager.settings_window.add_buttons(
-            self.uiManager.plus_size_button, self.uiManager.back_button,
-            self.uiManager.minus_size_btn, self.uiManager.next_button)
+            self.uiManager.plus_size_btn, self.uiManager.back_btn,
+            self.uiManager.minus_size_btn, self.uiManager.next_btn)
         for button in self.uiManager.plus_minus_buttons:
             self.uiManager.settings_window.add_buttons(button)
         self.uiManager.next_window(0)
@@ -531,6 +529,11 @@ class Game:
             if self.uiManager.field_params.nums_of_ships[i] != 0:
                 self.uiManager.field_params.nums_of_ships[i] = 0
 
+    def change_size(self, delta):
+        self.uiManager.field_params.field_size += delta
+        self.update_settings_window()
+        self.delete_extra_ships()
+
     # метод для окна с настройками
     def setup_field(self):
         global offset_for_field
@@ -543,42 +546,35 @@ class Game:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     # увеличиваем размер поля
-                    if self.uiManager.plus_size_button.rect.\
-                            collidepoint(mouse) and \
-                            self.uiManager.field_params.field_size < 15:
-                        self.uiManager.field_params.field_size += 1
-                        self.update_settings_window()
-                        self.delete_extra_ships()
+                    if self.uiManager.plus_size_btn.rect.collidepoint(mouse) \
+                            and self.uiManager.field_params.field_size < 15:
+                        self.change_size(1)
                     # уменьшаем размер поля
                     elif self.uiManager.minus_size_btn.rect.\
-                            collidepoint(mouse) and \
-                            self.uiManager.field_params.field_size > 2:
-                        self.uiManager.field_params.field_size -= 1
-                        self.update_settings_window()
-                        self.delete_extra_ships()
-                    elif self.uiManager.next_button.rect.collidepoint(mouse):
+                            collidepoint(mouse) \
+                            and self.uiManager.field_params.field_size > 2:
+                        self.change_size(-1)
+                    elif self.uiManager.next_btn.rect.collidepoint(mouse):
                         # перед тем как перейти к созданию поля, проверяем
                         # верны ли параметры
                         if self.are_params_correct():
                             self.field_set_up = True
                             self.uiManager.field_params.update_params()
-                            self.uiManager.drawer = DrawManager(self.uiManager.field_params)
-                            offset_for_field = self.uiManager.field_params.offset
+                            self.uiManager.drawer = DrawManager(
+                                self.uiManager.field_params)
+                            offset_for_field = self.uiManager.field_params.\
+                                offset
                             self.change_to_create_field(1)
                         # если не верны, то выводим сообщение о
                         # соответствующей ошибке
                         else:
                             if self.too_many_ships():
-                                self.uiManager.drawer.put_dynamic_label(ui.Label(
-                                    'Слишком много кораблей',
-                                    (22 * ui.cell_size, ui.screen_height - 2
-                                     * ui.cell_size), ui.RED))
+                                self.uiManager.drawer.put_error_message(
+                                    'Слишком много кораблей')
                             elif self.zero_ships():
-                                self.uiManager.drawer.put_dynamic_label(ui.Label(
-                                    'Слишком мало кораблей',
-                                    (22 * ui.cell_size, ui.screen_height - 2
-                                     * ui.cell_size), ui.RED))
-                    elif self.uiManager.back_button.rect.collidepoint(mouse):
+                                self.uiManager.drawer.put_error_message(
+                                    'Слишком мало кораблей')
+                    elif self.uiManager.back_btn.rect.collidepoint(mouse):
                         if GAME_WITH_BOT:
                             self.change_to_choose_level(True)
                         else:
@@ -598,25 +594,26 @@ class Game:
         self.field_made = False
         self.ships_created = False
 
-    def set_start_end_cells(self, x_end, x_start, y_start, y_end):
-        start_cell = (int((x_start) / ui.cell_size
+    @staticmethod
+    def set_start_end_cells(x_end, x_start, y_start, y_end):
+        start_cell = (int(x_start / ui.cell_size
                           + 1 - offset_for_field - middle_offset),
                       int((y_start - ui.top_margin) / ui.cell_size
                           + 1 - offset_for_field))
-        end_cell = (int((x_end) / ui.cell_size
+        end_cell = (int(x_end / ui.cell_size
                         + 1 - offset_for_field - middle_offset),
                     int((y_end - ui.top_margin) / ui.cell_size
                         + 1 - offset_for_field))
         if start_cell > end_cell:
             start_cell, end_cell = end_cell, start_cell
-        return (start_cell, end_cell)
+        return start_cell, end_cell
 
-    def check_borders(self, start_cell, end_cell, ships_stop_list, temp_ship, player):
+    def check_borders(self, start_cell, end_cell, ships_stop_list, temp_ship,
+                      player):
         # проверяем, что не зашли за границы поля
-        if 1 <= start_cell[0] <= self.uiManager.field_params.field_size \
-                and 1 <= start_cell[1] <= self.uiManager.field_params.field_size \
-                and 1 <= end_cell[0] <= self.uiManager.field_params.field_size \
-                and 1 <= end_cell[1] <= self.uiManager.field_params.field_size:
+        size = self.uiManager.field_params.field_size
+        if 1 <= start_cell[0] <= size and 1 <= start_cell[1] <= size \
+                and 1 <= end_cell[0] <= size and 1 <= end_cell[1] <= size:
 
             if end_cell[0] - start_cell[0] + 1 in ships_stop_list \
                     and end_cell[1] - start_cell[1] + 1 in \
@@ -663,24 +660,21 @@ class Game:
                     self.quit_game()
                 # если нажата кнопка 'дальше'
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.next_button.rect.collidepoint(mouse) \
+                        and self.uiManager.next_btn.rect.collidepoint(mouse) \
                         and self.ships_created:
                     self.field_made = True
-                    # если сейчас мы на первом окне создания кораблей
+
                     if player == 1:
-                        # если играм с ботом, то сразу переходим в игру
                         if GAME_WITH_BOT:
-                            self.players[2].field.generate_ships(self.uiManager.drawer,
-                                                                 self.uiManager)
-                            self.change_to_play_game(2)
-                        # если с другом, то на следующее окно создания
+                            self.players[2].field.generate_ships(
+                                self.uiManager.drawer, self.uiManager)
+                            self.change_to_play_game(delta=2)
                         else:
                             self.change_to_create_field(2)
-                    # если мы уже на втором окне, то переходим к игре
                     else:
                         self.change_to_play_game()
 
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.back_button.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.back_btn.rect.collidepoint(mouse):
                     self.field_made = True
                     if player == 2:
                         self.change_to_create_field(1, True)
@@ -689,7 +683,7 @@ class Game:
 
                 # если нажата кнопка 'сгенерировать рандомно'
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.random_button.rect.collidepoint(mouse):
+                        and self.uiManager.random_btn.rect.collidepoint(mouse):
                     # если мы уже порисовали, то поле отчищается
                     if can_draw:
                         can_draw = False
@@ -700,12 +694,12 @@ class Game:
                     self.ships_created = True
                 # если нажата кнопка 'стереть всё', поле отчищается
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.clear_button.rect.collidepoint(mouse):
+                        and self.uiManager.clear_btn.rect.collidepoint(mouse):
                     self.redraw_field(player)
                 # если нажата кнопка 'отмена', стирается последний
                 # нарисованный корабль
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.cancel_button.rect.collidepoint(mouse) \
+                        and self.uiManager.cancel_btn.rect.collidepoint(mouse) \
                         and can_draw:
                     if self.ships_to_draw:
                         last_ship = self.ships_to_draw.pop()
@@ -713,7 +707,7 @@ class Game:
                         self.players[player].field.remove_ship(last_ship)
                 # если нажата кнопка 'нарисовать', можем начать рисовать
                 elif event.type == pygame.MOUSEBUTTONDOWN and \
-                        self.uiManager.manual_button.rect.collidepoint(mouse):
+                        self.uiManager.manual_btn.rect.collidepoint(mouse):
                     can_draw = True
                     self.redraw_field(player)
                 # далее процесс рисования
@@ -765,6 +759,14 @@ class Game:
         return self.players[self.player_num].score == \
                self.uiManager.field_params.max_score
 
+    def find_winner(self):
+        if self.players[1].score > self.players[2].score:
+            return 1
+        elif self.players[2].score > self.players[1].score:
+            return 2
+        elif self.players[1].score == self.players[2].score:
+            return 0
+
     def kill(self, fired_cell):
         if self.bot_turn:
             self.players[2].killed = True
@@ -789,22 +791,36 @@ class Game:
 
     def win(self):
         self.game_over = True
-        if GAME_WITH_BOT:
-            if self.player_num == 2:
-                self.uiManager.win_window.add_labels(
-                    ui.Label('Компьютер победил', (
-                        ui.screen_width / 2, 2 * ui.cell_size)))
+        winner = self.find_winner()
+
+        if winner == 0:
+            self.uiManager.win_window.add_labels(ui.Label('Ничья',
+                             (ui.screen_width / 2, 2 * ui.cell_size)))
+        else:
+            score_label = ui.Label(
+                            'со счётом: {0}'.format(
+                                self.players[winner].score),
+                            (ui.screen_width / 2, 4 * ui.cell_size))
+
+            if GAME_WITH_BOT:
+                if winner == 1:
+                    self.uiManager.win_window.add_labels(
+                        ui.Label('Вы победили',
+                                 (ui.screen_width / 2, 2 * ui.cell_size)),
+                        score_label)
+                else:
+                    self.uiManager.win_window.add_labels(
+                        ui.Label('Компьютер победил', (
+                            ui.screen_width / 2, 2 * ui.cell_size)),
+                        score_label)
             else:
                 self.uiManager.win_window.add_labels(
-                    ui.Label('Вы победили',
-                             (ui.screen_width / 2,
-                              2 * ui.cell_size)))
-        else:
-            self.uiManager.win_window.add_labels(
-                ui.Label('Игрок {0} победил'.format(
-                    self.player_num),
-                    (ui.screen_width / 2,
-                     2 * ui.cell_size)))
+                    ui.Label('Игрок {0} победил'.format(winner),
+                             (ui.screen_width / 2, 2 * ui.cell_size)),
+                    ui.Label(
+                        'со счётом: {0} очков'.format(
+                            self.players[winner].score),
+                        (ui.screen_width / 2, 4 * ui.cell_size)))
         self.change_to_finish()
 
     def miss(self, fired_cell):
@@ -856,12 +872,21 @@ class Game:
 
         for p in self.players.values():
             p.field.set_cells_state()
+            for k, v in p.field.ships.items():
+                p.field.ships[k] = (False, p.field.ships[k][1])
+            p.score = 0
 
         while not self.game_over:
+            mouse = pygame.mouse.get_pos()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.quit_game()
-                elif event.type == pygame.MOUSEBUTTONDOWN or self.bot_turn:
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        self.uiManager.menu_btn.rect.collidepoint(mouse) and not self.game_paused:
+                    self.uiManager.drawer.show_menu(self.uiManager.menu_buttons)
+                    self.game_paused = True
+                elif (event.type == pygame.MOUSEBUTTONDOWN or self.bot_turn) \
+                        and not self.game_paused:
                     enemy = self.players[self.enemy_num]
                     if self.bot_turn:
                         fired_cell = self.players[2].do_shot(enemy, self.level)
@@ -869,6 +894,20 @@ class Game:
                         fired_cell = self.players[self.player_num].do_shot(
                             event, ui.OFFSETS[self.enemy_num])
                     self.check_fired_cell(fired_cell, enemy)
+                elif self.game_paused and event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.uiManager.continue_btn.rect.collidepoint(mouse):
+                        self.uiManager.drawer.hide_menu(self.uiManager.menu_buttons)
+                        self.game_paused = False
+                    elif self.uiManager.restart_btn.rect.collidepoint(mouse):
+                        self.game_over = True
+                        self.uiManager.drawer.hide_menu(self.uiManager.menu_buttons)
+                        self.change_to_play_game(True, 0)
+                    elif self.uiManager.surrender_btn.rect.collidepoint(mouse):
+                        self.game_over = True
+                        self.win()
+                    elif self.uiManager.main_nenu_btn.rect.collidepoint(mouse):
+                        self.game_over = True
+                        self.change_to_choose_mode(True, 5)
 
             pygame.display.update()
 
@@ -880,7 +919,7 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 # начинаем заново
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.restart_button.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.restart_btn.rect.collidepoint(mouse):
                     self.game_finished = True
                     game = Game()
                     game.play_game()

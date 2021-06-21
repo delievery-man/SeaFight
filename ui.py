@@ -115,11 +115,13 @@ class UIManager:
             6: self.win_window
         }
         self.window_number = 0
+        self.menu_buttons = [self.continue_btn, self.restart_btn,
+                             self.surrender_btn, self.main_nenu_btn]
 
     # координаты полежения кнопок с плюсами минусами в окне настроек зависят
     # от размера поля, поэтому при изменении размера поля их нужно
     # пересоздавать. это делает этот метод
-    def set_plus_minus_btns_params(self):
+    def set_plus_minus_buttons_params(self):
         size = self.field_params.field_size
         x_start = left_margin + (size + 1) * cell_size
         y_start = 5 * cell_size
@@ -144,80 +146,98 @@ class UIManager:
             start, end = middle, size
 
     def create_buttons(self):
-        self.start_with_friend_button = Button(
+        self.start_with_friend_btn = Button(
             'Играть с другом', ((screen_width - btn_width * 2) / 3,
                                 (screen_height - btn_height) / 2))
-        self.start_with_computer_button = Button(
+        self.start_with_computer_btn = Button(
             'Играть с компьютером', ((screen_width - btn_width * 2) * (2 / 3)
                                      + btn_width, (screen_height - btn_height)
                                      / 2))
         y_start = (screen_height - 3 * btn_height - 2 * cell_size) / 2
-        self.level_1_button = Button(
+        self.level_1_btn = Button(
             'Лёгкий уровень', ((screen_width - btn_width) / 2, y_start))
-        self.level_2_button = Button(
+        self.level_2_btn = Button(
             'Средний уровень', ((screen_width - btn_width) / 2,
                                 y_start + btn_height + cell_size))
-        self.level_3_button = Button(
+        self.level_3_btn = Button(
             'Сложный уровень', ((screen_width - btn_width) / 2,
                                 y_start + 2 * btn_height + 2 * cell_size))
-        self.next_button = Button(
+        y_start = (screen_height - 4 * btn_height - 3 * cell_size) / 2
+        self.continue_btn = Button(
+            'Продолжить', ((screen_width - btn_width) / 2, y_start))
+        self.restart_btn = Button(
+            'Начать заново', ((screen_width - btn_width) / 2, y_start + btn_height +
+                        cell_size))
+        self.surrender_btn = Button(
+            'Сдаться', ((screen_width - btn_width) / 2, y_start + 2 * btn_height +
+                        2 * cell_size))
+        self.main_nenu_btn = Button(
+            'Выйти в главное меню', ((screen_width - btn_width) / 2,
+                                     y_start + 3 * btn_height + 3 * cell_size))
+        self.menu_btn = Button(
+            'Меню', (screen_width - 3 * cell_size, cell_size),
+            2 * cell_size, cell_size)
+        self.next_btn = Button(
             'Дальше', (screen_width - left_margin - btn_width,
                        screen_height - 3 * cell_size))
-        self.back_button = Button(
+        self.back_btn = Button(
             'Назад', (left_margin, screen_height - 3 * cell_size))
-        self.random_button = Button(
+        self.random_btn = Button(
             'Расставить рандомно', (screen_width - left_margin - btn_width,
                                     top_margin + 1.5 * btn_height))
-        self.manual_button = Button(
+        self.manual_btn = Button(
             'Нарисовать', (screen_width - left_margin - btn_width, top_margin))
-        self.clear_button = Button(
+        self.clear_btn = Button(
             'Стереть всё', (screen_width - left_margin - btn_width,
                             top_margin + 4.5 * btn_height))
-        self.cancel_button = Button(
+        self.cancel_btn = Button(
             'Отмена', (screen_width - left_margin - btn_width,
                        top_margin + 3 * btn_height))
-        self.restart_button = Button(
-            'Начать заново', ((screen_width - btn_width) / 2, screen_height // 2))
-        self.plus_size_button = Button(
+        self.plus_size_btn = Button(
             '+', (left_margin + 23 * cell_size, 3 * cell_size),
             cell_size, cell_size)
         self.minus_size_btn = Button(
             '-', (left_margin + 20 * cell_size, 3 * cell_size),
             cell_size, cell_size)
-        self.set_plus_minus_btns_params()
+        self.set_plus_minus_buttons_params()
 
     def create_windows(self):
         self.start_window = Window()
-        self.start_window.add_buttons(self.start_with_friend_button,
-                                      self.start_with_computer_button)
+        self.start_window.add_buttons(self.start_with_friend_btn,
+                                      self.start_with_computer_btn)
 
         self.levels_window = Window()
         self.levels_window.add_buttons(
-            self.level_1_button, self.level_2_button, self.level_3_button,
-            self.back_button)
+            self.level_1_btn, self.level_2_btn, self.level_3_btn,
+            self.back_btn)
         self.levels_window.add_labels(Label('Выберите уровень сложности',
                                             (screen_width / 2, top_margin)))
 
         self.settings_window = Window()
-        self.settings_window.add_buttons(self.plus_size_button,
-                                         self.minus_size_btn, self.next_button,
-                                         self.back_button)
+        self.settings_window.add_buttons(self.plus_size_btn,
+                                         self.minus_size_btn, self.next_btn,
+                                         self.back_btn)
         self.settings_window.add_labels(Label('Настройте параметры поля',
                                               (screen_width / 2, cell_size)))
         for b in self.plus_minus_buttons:
             self.settings_window.add_buttons(b)
 
         self.create_window = Window()
-        self.create_window.add_buttons(self.next_button, self.random_button,
-                                       self.manual_button, self.cancel_button,
-                                       self.clear_button, self.back_button)
+        self.create_window.add_buttons(self.next_btn, self.random_btn,
+                                       self.manual_btn, self.cancel_btn,
+                                       self.clear_btn, self.back_btn)
         self.create_window.fields = 1
 
         self.game_window = Window()
+        self.game_window.add_buttons(self.menu_btn)
         self.game_window.fields = 2
 
+        # self.menu_window = Window()
+        # self.menu_window.add_buttons(self.restart_btn, self.surrender_btn,
+        #                              self.main_nenu_btn, self.continue_btn)
+
         self.win_window = Window()
-        self.win_window.add_buttons(self.restart_button)
+        self.win_window.add_buttons(self.restart_btn)
 
     def next_window(self, delta=1):
         self.window_number += delta
@@ -251,6 +271,20 @@ class DrawManager:
             print('im here')
             self.draw_field(OFFSETS[1])
             self.draw_field(OFFSETS[2])
+
+    def show_menu(self, menu_buttons):
+        for btn in menu_buttons:
+            self.draw_button(btn)
+
+    def hide_menu(self, menu_buttons):
+        for btn in menu_buttons:
+            pygame.draw.rect(screen, WHITE, (btn.x_start, btn.y_start,
+                                             btn.width, btn.height))
+            for i in range(2):
+                pygame.draw.line(screen, LIGHT_BLUE, (btn.x_start, btn.y_start + i * cell_size), (btn.x_start + btn_width, btn.y_start + i * cell_size))
+            for i in range(btn.width // cell_size):
+                pygame.draw.line(screen, LIGHT_BLUE, (btn.x_start + i * cell_size, btn.y_start), (btn.x_start + i * cell_size, btn.y_start + btn.height))
+
 
     # рисует сетку на фоне
     @staticmethod
@@ -287,6 +321,10 @@ class DrawManager:
                                                label.width + 2 * cell_size,
                                                cell_size))
         self.put_static_label(label)
+
+    def put_error_message(self, message):
+        self.put_dynamic_label(Label(message, (22 * cell_size, screen_height -
+                                               2 * cell_size), RED))
 
     # отрисовывает показатели параметров в поле с настройками
     # (которые между кнопочками)
