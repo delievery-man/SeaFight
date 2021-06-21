@@ -339,21 +339,7 @@ class Game:
         self.setup_field()
 
     def change_to_create_field(self, player, go_back=False):
-        self.uiManager.create_window.clear_labels()
-        self.uiManager.create_window.add_labels(
-            ui.Label(self.labels[player], (22 * ui.cell_size, ui.cell_size)),
-            ui.Label('Доступные корабли', (7 * ui.cell_size, 3 * ui.cell_size)),
-        ui.Label('Размер', (5 * ui.cell_size, 4 * ui.cell_size)),
-        ui.Label('Количество', (9 * ui.cell_size, 4 * ui.cell_size)))
-        x_start = 5 * ui.cell_size
-        y_start = 5 * ui.cell_size
-        for i in range(len(self.uiManager.field_params.nums_of_ships)):
-            if self.uiManager.field_params.nums_of_ships[i] != 0:
-                self.uiManager.create_window.add_labels(
-                    ui.Label('{0}'.format(i + 1), (x_start, y_start)))
-
-                y_start += ui.cell_size
-
+        self.uiManager.set_ships_in_game()
         if go_back:
             self.uiManager.go_back()
         else:
@@ -449,7 +435,7 @@ class Game:
             3: ui.Label('Сложный уровень', (22 * ui.cell_size, ui.cell_size))}
         self.level = level
         self.level_chosen = True
-        self.uiManager.game_window.add_labels(labels[level])
+        self.uiManager.game_window.add_fixed_labels(labels[level])
         self.change_to_setup_field()
 
     # метод для окна с выбором уровня бота. открывается,
@@ -496,8 +482,6 @@ class Game:
             # кораблей, обновляем везде параметры
             elif plus_btn.sound_rect.collidepoint(mouse):
                 self.change_param(i, 1)
-
-
 
     # проверяет верны ли введеные в настйроках параметры
     def are_params_correct(self):
@@ -802,8 +786,8 @@ class Game:
         winner = self.find_winner()
 
         if winner == 0:
-            self.uiManager.win_window.add_labels(ui.Label('Ничья',
-                             (ui.screen_width / 2, 2 * ui.cell_size)))
+            self.uiManager.win_window.add_fixed_labels(
+                ui.Label('Ничья', (ui.screen_width / 2, 2 * ui.cell_size)))
         else:
             score_label = ui.Label(
                             'со счётом: {0}'.format(
@@ -812,17 +796,17 @@ class Game:
 
             if GAME_WITH_BOT:
                 if winner == 1:
-                    self.uiManager.win_window.add_labels(
+                    self.uiManager.win_window.add_fixed_labels(
                         ui.Label('Вы победили',
                                  (ui.screen_width / 2, 2 * ui.cell_size)),
                         score_label)
                 else:
-                    self.uiManager.win_window.add_labels(
+                    self.uiManager.win_window.add_fixed_labels(
                         ui.Label('Компьютер победил', (
                             ui.screen_width / 2, 2 * ui.cell_size)),
                         score_label)
             else:
-                self.uiManager.win_window.add_labels(
+                self.uiManager.win_window.add_fixed_labels(
                     ui.Label('Игрок {0} победил'.format(winner),
                              (ui.screen_width / 2, 2 * ui.cell_size)),
                     ui.Label(
@@ -839,7 +823,7 @@ class Game:
         self.uiManager.drawer.last_move(fired_cell, 'мимо', self.player_num)
 
     def check_fired_cell(self, fired_cell, enemy):
-        if fired_cell != (0, 0):
+        if fired_cell != (0, 0) and fired_cell[0] != self.uiManager.field_params.field_size + 1:
             # если попали в корабль врага и он еще не подбитый
             if fired_cell in enemy.field.ships and \
                     enemy.field.ships[fired_cell][0] is False:

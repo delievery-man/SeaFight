@@ -27,10 +27,10 @@ pygame.display.set_caption('Морской бой')
 font_size = 24
 font = pygame.font.SysFont('notosans', font_size)
 
-pygame.mixer.music.load('morskoj-priboj.mp3')
-sound_missed = pygame.mixer.Sound('splash.mp3')
-sound_wounded = pygame.mixer.Sound('shot.mp3')
-sound_killed = pygame.mixer.Sound('killed-shot.mp3')
+pygame.mixer.music.load('morskoj-priboj.ogg')
+sound_missed = pygame.mixer.Sound('splash.ogg')
+sound_wounded = pygame.mixer.Sound('shot.ogg')
+sound_killed = pygame.mixer.Sound('killed-shot.ogg')
 
 
 class FieldParams:
@@ -82,29 +82,28 @@ class Window:
     # которые он в себе содержит. это удобно при отрисовывании окна
     def __init__(self):
         self.fields = 0
-        self.buttons = []
-        self.labels = []
+        self.fixed_buttons = []
+        self.fixed_labels = []
         self.changing_labels = []
+        self.changing_buttons = []
         self.sound_button = ImageButton('sound.png')
 
-    def add_buttons(self, *buttons):
-        for button in buttons:
-            self.buttons.append(button)
+    def add_fixed_buttons(self, *buttons):
+        self.fixed_buttons = [button for button in buttons]
 
-    def add_labels(self, *labels):
-        for label in labels:
-            self.labels.append(label)
-
-    def clear_labels(self):
-        self.labels = []
-
-    def clear_buttons(self):
-        self.buttons = []
+    def add_fixed_labels(self, *labels):
+        self.fixed_labels = [label for label in labels]
 
     def add_changing_labels(self, *labels):
         for label in labels:
             self.changing_labels.append(label)
 
+    def add_changing_buttons(self, *buttons):
+        for button in buttons:
+            self.changing_buttons.append(button)
+
+    def clear_buttons(self):
+        self.changing_buttons = []
 
 class UIManager:
     # тут создаются и хранятся все кнопки и окна. лейблы как переменные не
@@ -220,37 +219,38 @@ class UIManager:
         self.set_plus_minus_buttons()
 
     def set_windows(self):
-        self.start_window.add_buttons(self.start_with_friend_btn,
-                                      self.start_with_computer_btn)
+        self.start_window.add_fixed_buttons(self.start_with_friend_btn,
+                                            self.start_with_computer_btn)
 
-        self.levels_window.add_buttons(
+        self.levels_window.add_fixed_buttons(
             self.level_1_btn, self.level_2_btn, self.level_3_btn,
             self.back_btn)
-        self.levels_window.add_labels(Label(
+        self.levels_window.add_fixed_labels(Label(
             'Выберите уровень сложности', (screen_width / 2, top_margin)))
 
-        self.settings_window.add_buttons(self.plus_size_btn,
-                                         self.minus_size_btn, self.next_btn,
-                                         self.back_btn)
-        self.settings_window.add_labels(
+        self.settings_window.add_fixed_buttons(self.plus_size_btn,
+                                               self.minus_size_btn,
+                                               self.next_btn, self.back_btn)
+        self.settings_window.add_fixed_labels(
             Label('Настройте параметры поля', (screen_width / 2, cell_size)),
             Label('Размер поля', (left_margin + 17 * cell_size,
                                   3 * cell_size)))
-        for b in self.plus_minus_buttons:
-            self.settings_window.add_buttons(b)
+        for button in self.plus_minus_buttons:
+            self.settings_window.add_changing_buttons(button)
 
-        self.create_window.add_buttons(self.next_btn, self.random_btn,
-                                       self.manual_btn, self.cancel_btn,
-                                       self.clear_btn, self.back_btn)
-        self.create_window.add_labels(
-            Label('Доступные корабли', (3 * cell_size, 3 * cell_size)),
-            Label('Размер', (5 * cell_size, 6 * cell_size)))
+        self.create_window.add_fixed_buttons(self.next_btn, self.random_btn,
+                                             self.manual_btn, self.cancel_btn,
+                                             self.clear_btn, self.back_btn)
+        self.create_window.add_fixed_labels(
+            Label('Доступные корабли', (7 * cell_size, 3 * cell_size)),
+            Label('Размер', (5 * cell_size, 4 * cell_size)),
+            Label('Количество', (9 * cell_size, 4 * cell_size)))
         self.create_window.fields = 1
 
-        self.game_window.add_buttons(self.menu_btn)
+        self.game_window.add_fixed_buttons(self.menu_btn)
         self.game_window.fields = 2
 
-        self.win_window.add_buttons(self.restart_btn)
+        self.win_window.add_fixed_buttons(self.restart_btn)
 
     def next_window(self, delta=1):
         self.window_number += delta
@@ -288,14 +288,21 @@ class UIManager:
     def update_settings_window(self):
         self.set_plus_minus_buttons()
         self.settings_window.clear_buttons()
-        self.settings_window.add_buttons(
-            self.plus_size_btn, self.back_btn,
-            self.minus_size_btn, self.next_btn)
         for button in self.plus_minus_buttons:
-            self.settings_window.add_buttons(button)
+            self.settings_window.add_changing_buttons(button)
         self.next_window(0)
         self.drawer.draw_ship_examples()
         self.drawer.put_params_labels()
+
+    def set_ships_in_game(self):
+        x_start = 5 * cell_size
+        y_start = 5 * cell_size
+        for i in range(len(self.field_params.nums_of_ships)):
+            if self.field_params.nums_of_ships[i] != 0:
+                self.create_window.add_changing_labels(
+                    Label('{0}'.format(i + 1), (x_start, y_start)))
+
+                y_start += cell_size
 
 
 class DrawManager:
@@ -311,9 +318,13 @@ class DrawManager:
         screen.fill(WHITE)
         self.draw_grid(LIGHT_BLUE)
         screen.blit(window.sound_button.image, window.sound_button.rect)
-        for button in window.buttons:
+        for button in window.fixed_buttons:
             self.draw_button(button)
-        for label in window.labels:
+        for button in window.changing_buttons:
+            self.draw_button(button)
+        for label in window.fixed_labels:
+            self.put_static_label(label)
+        for label in window.changing_labels:
             self.put_static_label(label)
         if window.fields == 1:
             self.draw_field(middle_offset)
