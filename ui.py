@@ -28,15 +28,20 @@ font_size = 24
 font = pygame.font.SysFont('notosans', font_size)
 
 pygame.mixer.music.load('morskoj-priboj.mp3')
-pygame.mixer.music.set_volume(0.3)
-pygame.mixer.music.play()
-
 sound_missed = pygame.mixer.Sound('splash.mp3')
-sound_missed.set_volume(0.8)
 sound_wounded = pygame.mixer.Sound('shot.mp3')
-sound_wounded.set_volume(2)
 sound_killed = pygame.mixer.Sound('killed-shot.mp3')
-sound_killed.set_volume(1.3)
+
+# sound = pygame.image.load('sound.png')
+# crossed_sound = pygame.image.load('crossed_sound.png')
+# crossed_sound.set_colorkey(WHITE)
+# sound = pygame.transform.scale(sound, (2 * cell_size, 2 * cell_size))
+# crossed_sound = pygame.transform.scale(crossed_sound, (2 * cell_size, 2 * cell_size))
+# sound_rect = pygame.Rect(cell_size, cell_size, 2 * cell_size, 2 * cell_size)
+# crossed_sound_rect = pygame.Rect(cell_size, cell_size, 2 * cell_size, 2 * cell_size)
+
+
+
 
 
 class FieldParams:
@@ -67,6 +72,15 @@ class Button:
                                  width, height))
 
 
+class ImageButton(Button):
+    def __init__(self, image):
+        super().__init__('', (cell_size, cell_size), 2 * cell_size, 2 * cell_size)
+        self.image = pygame.image.load(image)
+        self.image = pygame.transform.scale(self.image, (2 * cell_size, 2 * cell_size))
+        self.image.set_colorkey(WHITE)
+        self.rect = pygame.Rect(cell_size, cell_size, 2 * cell_size, 2 * cell_size)
+
+
 class Label:
     def __init__(self, text, params, color=BUTTON_BLUE):
         self.text = font.render(text, True, color)
@@ -81,6 +95,7 @@ class Window:
         self.fields = 0
         self.buttons = []
         self.labels = []
+        self.sound_button = ImageButton('sound.png')
 
     def add_buttons(self, *buttons):
         for button in buttons:
@@ -117,6 +132,8 @@ class UIManager:
         self.window_number = 0
         self.menu_buttons = [self.continue_btn, self.restart_btn,
                              self.surrender_btn, self.main_nenu_btn]
+        self.sound_on = False
+        self.change_sound_volume()
 
     # координаты полежения кнопок с плюсами минусами в окне настроек зависят
     # от размера поля, поэтому при изменении размера поля их нужно
@@ -247,6 +264,31 @@ class UIManager:
         self.window_number -= delta
         self.drawer.show_window(self.windows_order[self.window_number])
 
+    def change_sound_volume(self):
+        if self.sound_on:
+            self.sound_on = False
+            pygame.mixer.music.set_volume(0)
+            sound_missed.set_volume(0)
+            sound_wounded.set_volume(0)
+            sound_killed.set_volume(0)
+            self.sound_btn = ImageButton('crossed_sound.png')
+        else:
+            self.sound_on = True
+            pygame.mixer.music.set_volume(0.3)
+            pygame.mixer.music.play(loops=-1)
+            sound_missed.set_volume(0.8)
+            sound_wounded.set_volume(2)
+            sound_killed.set_volume(1.3)
+            self.sound_btn = ImageButton('sound.png')
+        pygame.draw.rect(screen, WHITE, (cell_size, cell_size, 2 * cell_size, 2 * cell_size))
+        for i in range(2):
+            pygame.draw.line(screen, LIGHT_BLUE, (cell_size, cell_size + i * cell_size), (3 * cell_size, cell_size + i * cell_size))
+            pygame.draw.line(screen, LIGHT_BLUE, (cell_size + i * cell_size, cell_size), (cell_size + i * cell_size, 3 * cell_size))
+        screen.blit(self.sound_btn.image, self.sound_btn.rect)
+        for window in self.windows_order.values():
+            window.sound_button = self.sound_btn
+
+
 
 class DrawManager:
     def __init__(self, field_params):
@@ -260,6 +302,7 @@ class DrawManager:
     def show_window(self, window):
         screen.fill(WHITE)
         self.draw_grid(LIGHT_BLUE)
+        screen.blit(window.sound_button.image, window.sound_button.rect)
         for button in window.buttons:
             self.draw_button(button)
         for label in window.labels:
@@ -268,7 +311,6 @@ class DrawManager:
             self.draw_field(middle_offset)
             self.draw_ships_in_game()
         elif window.fields == 2:
-            print('im here')
             self.draw_field(OFFSETS[1])
             self.draw_field(OFFSETS[2])
 
@@ -305,7 +347,7 @@ class DrawManager:
         pygame.draw.rect(screen, color, (x_start, y_start, width, height))
         screen.blit(font.render(button.title, True, WHITE),
                     title_params)
-        button.rect = pygame.Rect((x_start, y_start, width, height))
+        button.sound_rect = pygame.Rect((x_start, y_start, width, height))
 
     # просто пишет текст
     @staticmethod
@@ -488,7 +530,7 @@ class DrawManager:
             width = cell_size * len(ship)
             height = cell_size
         pygame.draw.rect(screen, BUTTON_BLUE, (x, y, width, height))
-        # pygame.draw.rect(screen, BLUE, ((x, y), (width, height)),
+        # pygame.draw.sound_rect(screen, BLUE, ((x, y), (width, height)),
         #                  width=cell_size // 10)
 
     # обновляет лейб с очками

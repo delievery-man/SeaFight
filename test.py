@@ -219,7 +219,7 @@ class DrawManager:
                              y_start + height / 2 - button.title_height / 2)
         pygame.draw.rect(screen, color, (x_start, y_start, width, height))
         screen.blit(font.render(button.title, True, WHITE), title_params)
-        button.rect = pygame.Rect((x_start, y_start, width, height))
+        button.sound_rect = pygame.Rect((x_start, y_start, width, height))
 
     @staticmethod
     def draw_field(offset):

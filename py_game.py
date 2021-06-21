@@ -359,11 +359,6 @@ class Game:
         self.game_paused = False
         self.play()
 
-    # def change_to_menu(self):
-    #     self.uiManager.next_window()
-    #     self.quit_menu = False
-    #     self.menu()
-
     def change_to_finish(self):
         self.uiManager.next_window()
         self.finish()
@@ -425,12 +420,14 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.uiManager.start_with_friend_btn.rect.\
+                    if self.uiManager.start_with_friend_btn.sound_rect.\
                             collidepoint(mouse):
                         self.set_mode(False)
-                    elif self.uiManager.start_with_computer_btn.rect.\
+                    elif self.uiManager.start_with_computer_btn.sound_rect.\
                             collidepoint(mouse):
                         self.set_mode(True)
+                    elif self.uiManager.sound_btn.rect.collidepoint(mouse):
+                        self.uiManager.change_sound_volume()
             pygame.display.update()
 
     def set_level(self, level):
@@ -452,15 +449,17 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.uiManager.level_1_btn.rect.collidepoint(mouse):
+                    if self.uiManager.level_1_btn.sound_rect.collidepoint(mouse):
                         self.set_level(1)
-                    elif self.uiManager.level_2_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.level_2_btn.sound_rect.collidepoint(mouse):
                         self.set_level(2)
-                    elif self.uiManager.level_3_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.level_3_btn.sound_rect.collidepoint(mouse):
                         self.set_level(3)
-                    elif self.uiManager.back_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.back_btn.sound_rect.collidepoint(mouse):
                         self.level_chosen = True
                         self.change_to_choose_mode(True)
+                    elif self.uiManager.sound_btn.rect.collidepoint(mouse):
+                        self.uiManager.change_sound_volume()
             pygame.display.update()
 
     def change_param(self, i, delta):
@@ -477,13 +476,13 @@ class Game:
                                   self.uiManager.plus_minus_buttons[i + 1]
             # если кнопка - нажата, уменьшаем количество соответствующих
             # кораблей, обновляем везде параметры
-            if minus_btn.rect.collidepoint(mouse):
+            if minus_btn.sound_rect.collidepoint(mouse):
                 if self.uiManager.field_params.nums_of_ships[i // 2] == 0:
                     continue
                 self.change_param(i, -1)
             # если кнопка + нажата, увеличиваем количество соответствующих
             # кораблей, обновляем везде параметры
-            elif plus_btn.rect.collidepoint(mouse):
+            elif plus_btn.sound_rect.collidepoint(mouse):
                 self.change_param(i, 1)
 
     # обновляет окно с настройками, после того, как меняется рзамер поля
@@ -546,15 +545,15 @@ class Game:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     # увеличиваем размер поля
-                    if self.uiManager.plus_size_btn.rect.collidepoint(mouse) \
+                    if self.uiManager.plus_size_btn.sound_rect.collidepoint(mouse) \
                             and self.uiManager.field_params.field_size < 15:
                         self.change_size(1)
                     # уменьшаем размер поля
-                    elif self.uiManager.minus_size_btn.rect.\
+                    elif self.uiManager.minus_size_btn.sound_rect.\
                             collidepoint(mouse) \
                             and self.uiManager.field_params.field_size > 2:
                         self.change_size(-1)
-                    elif self.uiManager.next_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.next_btn.sound_rect.collidepoint(mouse):
                         # перед тем как перейти к созданию поля, проверяем
                         # верны ли параметры
                         if self.are_params_correct():
@@ -574,11 +573,13 @@ class Game:
                             elif self.zero_ships():
                                 self.uiManager.drawer.put_error_message(
                                     'Слишком мало кораблей')
-                    elif self.uiManager.back_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.back_btn.sound_rect.collidepoint(mouse):
                         if GAME_WITH_BOT:
                             self.change_to_choose_level(True)
                         else:
                             self.change_to_choose_mode(True, 2)
+                    elif self.uiManager.sound_btn.rect.collidepoint(mouse):
+                        self.uiManager.change_sound_volume()
                     else:
                         # проверяем кнопки + и -
                         self.check_buttons(mouse)
@@ -660,7 +661,7 @@ class Game:
                     self.quit_game()
                 # если нажата кнопка 'дальше'
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.next_btn.rect.collidepoint(mouse) \
+                        and self.uiManager.next_btn.sound_rect.collidepoint(mouse) \
                         and self.ships_created:
                     self.field_made = True
 
@@ -674,7 +675,10 @@ class Game:
                     else:
                         self.change_to_play_game()
 
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.back_btn.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.sound_btn.rect.collidepoint(mouse):
+                    self.uiManager.change_sound_volume()
+
+                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.back_btn.sound_rect.collidepoint(mouse):
                     self.field_made = True
                     if player == 2:
                         self.change_to_create_field(1, True)
@@ -683,7 +687,7 @@ class Game:
 
                 # если нажата кнопка 'сгенерировать рандомно'
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.random_btn.rect.collidepoint(mouse):
+                        and self.uiManager.random_btn.sound_rect.collidepoint(mouse):
                     # если мы уже порисовали, то поле отчищается
                     if can_draw:
                         can_draw = False
@@ -694,12 +698,12 @@ class Game:
                     self.ships_created = True
                 # если нажата кнопка 'стереть всё', поле отчищается
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.clear_btn.rect.collidepoint(mouse):
+                        and self.uiManager.clear_btn.sound_rect.collidepoint(mouse):
                     self.redraw_field(player)
                 # если нажата кнопка 'отмена', стирается последний
                 # нарисованный корабль
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.cancel_btn.rect.collidepoint(mouse) \
+                        and self.uiManager.cancel_btn.sound_rect.collidepoint(mouse) \
                         and can_draw:
                     if self.ships_to_draw:
                         last_ship = self.ships_to_draw.pop()
@@ -707,7 +711,7 @@ class Game:
                         self.players[player].field.remove_ship(last_ship)
                 # если нажата кнопка 'нарисовать', можем начать рисовать
                 elif event.type == pygame.MOUSEBUTTONDOWN and \
-                        self.uiManager.manual_btn.rect.collidepoint(mouse):
+                        self.uiManager.manual_btn.sound_rect.collidepoint(mouse):
                     can_draw = True
                     self.redraw_field(player)
                 # далее процесс рисования
@@ -882,9 +886,11 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN and \
-                        self.uiManager.menu_btn.rect.collidepoint(mouse) and not self.game_paused:
+                        self.uiManager.menu_btn.sound_rect.collidepoint(mouse) and not self.game_paused:
                     self.uiManager.drawer.show_menu(self.uiManager.menu_buttons)
                     self.game_paused = True
+                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.sound_btn.rect.collidepoint(mouse):
+                    self.uiManager.change_sound_volume()
                 elif (event.type == pygame.MOUSEBUTTONDOWN or self.bot_turn) \
                         and not self.game_paused:
                     enemy = self.players[self.enemy_num]
@@ -895,17 +901,17 @@ class Game:
                             event, ui.OFFSETS[self.enemy_num])
                     self.check_fired_cell(fired_cell, enemy)
                 elif self.game_paused and event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.uiManager.continue_btn.rect.collidepoint(mouse):
+                    if self.uiManager.continue_btn.sound_rect.collidepoint(mouse):
                         self.uiManager.drawer.hide_menu(self.uiManager.menu_buttons)
                         self.game_paused = False
-                    elif self.uiManager.restart_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.restart_btn.sound_rect.collidepoint(mouse):
                         self.game_over = True
                         self.uiManager.drawer.hide_menu(self.uiManager.menu_buttons)
                         self.change_to_play_game(True, 0)
-                    elif self.uiManager.surrender_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.surrender_btn.sound_rect.collidepoint(mouse):
                         self.game_over = True
                         self.win()
-                    elif self.uiManager.main_nenu_btn.rect.collidepoint(mouse):
+                    elif self.uiManager.main_nenu_btn.sound_rect.collidepoint(mouse):
                         self.game_over = True
                         self.change_to_choose_mode(True, 5)
 
@@ -919,7 +925,7 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 # начинаем заново
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.restart_btn.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.restart_btn.sound_rect.collidepoint(mouse):
                     self.game_finished = True
                     game = Game()
                     game.play_game()
