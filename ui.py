@@ -32,17 +32,6 @@ sound_missed = pygame.mixer.Sound('splash.mp3')
 sound_wounded = pygame.mixer.Sound('shot.mp3')
 sound_killed = pygame.mixer.Sound('killed-shot.mp3')
 
-# sound = pygame.image.load('sound.png')
-# crossed_sound = pygame.image.load('crossed_sound.png')
-# crossed_sound.set_colorkey(WHITE)
-# sound = pygame.transform.scale(sound, (2 * cell_size, 2 * cell_size))
-# crossed_sound = pygame.transform.scale(crossed_sound, (2 * cell_size, 2 * cell_size))
-# sound_rect = pygame.Rect(cell_size, cell_size, 2 * cell_size, 2 * cell_size)
-# crossed_sound_rect = pygame.Rect(cell_size, cell_size, 2 * cell_size, 2 * cell_size)
-
-
-
-
 
 class FieldParams:
     def __init__(self):
@@ -95,6 +84,7 @@ class Window:
         self.fields = 0
         self.buttons = []
         self.labels = []
+        self.changing_labels = []
         self.sound_button = ImageButton('sound.png')
 
     def add_buttons(self, *buttons):
@@ -111,15 +101,26 @@ class Window:
     def clear_buttons(self):
         self.buttons = []
 
+    def add_changing_labels(self, *labels):
+        for label in labels:
+            self.changing_labels.append(label)
+
 
 class UIManager:
     # тут создаются и хранятся все кнопки и окна. лейблы как переменные не
     # хранятся.
     def __init__(self):
+        self.plus_minus_buttons = []
+        self.win_window = Window()
+        self.game_window = Window()
+        self.create_window = Window()
+        self.settings_window = Window()
+        self.levels_window = Window()
+        self.start_window = Window()
         self.field_params = FieldParams()
         self.drawer = DrawManager(self.field_params)
         self.create_buttons()
-        self.create_windows()
+        self.set_windows()
         self.windows_order = {
             0: self.start_window,
             1: self.levels_window,
@@ -138,7 +139,8 @@ class UIManager:
     # координаты полежения кнопок с плюсами минусами в окне настроек зависят
     # от размера поля, поэтому при изменении размера поля их нужно
     # пересоздавать. это делает этот метод
-    def set_plus_minus_buttons_params(self):
+    def set_plus_minus_buttons(self):
+        self.plus_minus_buttons = []
         size = self.field_params.field_size
         x_start = left_margin + (size + 1) * cell_size
         y_start = 5 * cell_size
@@ -146,7 +148,6 @@ class UIManager:
             middle = size // 2
         else:
             middle = size // 2 + 1
-        self.plus_minus_buttons = []
         start, end = 0, middle
         for j in range(2):
             for i in range(start, end):
@@ -216,44 +217,39 @@ class UIManager:
         self.minus_size_btn = Button(
             '-', (left_margin + 20 * cell_size, 3 * cell_size),
             cell_size, cell_size)
-        self.set_plus_minus_buttons_params()
+        self.set_plus_minus_buttons()
 
-    def create_windows(self):
-        self.start_window = Window()
+    def set_windows(self):
         self.start_window.add_buttons(self.start_with_friend_btn,
                                       self.start_with_computer_btn)
 
-        self.levels_window = Window()
         self.levels_window.add_buttons(
             self.level_1_btn, self.level_2_btn, self.level_3_btn,
             self.back_btn)
-        self.levels_window.add_labels(Label('Выберите уровень сложности',
-                                            (screen_width / 2, top_margin)))
+        self.levels_window.add_labels(Label(
+            'Выберите уровень сложности', (screen_width / 2, top_margin)))
 
-        self.settings_window = Window()
         self.settings_window.add_buttons(self.plus_size_btn,
                                          self.minus_size_btn, self.next_btn,
                                          self.back_btn)
-        self.settings_window.add_labels(Label('Настройте параметры поля',
-                                              (screen_width / 2, cell_size)))
+        self.settings_window.add_labels(
+            Label('Настройте параметры поля', (screen_width / 2, cell_size)),
+            Label('Размер поля', (left_margin + 17 * cell_size,
+                                  3 * cell_size)))
         for b in self.plus_minus_buttons:
             self.settings_window.add_buttons(b)
 
-        self.create_window = Window()
         self.create_window.add_buttons(self.next_btn, self.random_btn,
                                        self.manual_btn, self.cancel_btn,
                                        self.clear_btn, self.back_btn)
+        self.create_window.add_labels(
+            Label('Доступные корабли', (3 * cell_size, 3 * cell_size)),
+            Label('Размер', (5 * cell_size, 6 * cell_size)))
         self.create_window.fields = 1
 
-        self.game_window = Window()
         self.game_window.add_buttons(self.menu_btn)
         self.game_window.fields = 2
 
-        # self.menu_window = Window()
-        # self.menu_window.add_buttons(self.restart_btn, self.surrender_btn,
-        #                              self.main_nenu_btn, self.continue_btn)
-
-        self.win_window = Window()
         self.win_window.add_buttons(self.restart_btn)
 
     def next_window(self, delta=1):
@@ -288,6 +284,18 @@ class UIManager:
         for window in self.windows_order.values():
             window.sound_button = self.sound_btn
 
+    # обновляет окно с настройками, после того, как меняется рзамер поля
+    def update_settings_window(self):
+        self.set_plus_minus_buttons()
+        self.settings_window.clear_buttons()
+        self.settings_window.add_buttons(
+            self.plus_size_btn, self.back_btn,
+            self.minus_size_btn, self.next_btn)
+        for button in self.plus_minus_buttons:
+            self.settings_window.add_buttons(button)
+        self.next_window(0)
+        self.drawer.draw_ship_examples()
+        self.drawer.put_params_labels()
 
 
 class DrawManager:
@@ -309,10 +317,46 @@ class DrawManager:
             self.put_static_label(label)
         if window.fields == 1:
             self.draw_field(middle_offset)
-            self.draw_ships_in_game()
+            self.set_ships_in_game()
         elif window.fields == 2:
             self.draw_field(OFFSETS[1])
             self.draw_field(OFFSETS[2])
+
+    def set_ships_in_game(self):
+        x_start = 8 * cell_size
+        y_start = 5 * cell_size
+        for i in range(len(self.field_params.nums_of_ships)):
+            if self.field_params.nums_of_ships[i] != 0:
+                pygame.draw.rect(screen, WHITE, (x_start, y_start, 2 *
+                                                 cell_size, cell_size))
+                pygame.draw.rect(screen, LIGHT_BLUE,
+                                 (x_start, y_start, 2 * cell_size, cell_size),
+                                 1)
+                pygame.draw.line(screen, LIGHT_BLUE,
+                                 (x_start + cell_size, y_start),
+                                 (x_start + cell_size, y_start + cell_size))
+                self.put_static_label(Label(str(self.field_params.nums_of_ships[i]),
+                                            (x_start + cell_size, y_start)))
+                y_start += cell_size
+
+    def update_ships_in_game(self, drawn_ships):
+        x_start = 8 * cell_size
+        y_start = 5 * cell_size
+        for i in range(len(self.field_params.nums_of_ships)):
+            if self.field_params.nums_of_ships[i] != 0:
+                pygame.draw.rect(screen, WHITE, (x_start, y_start, 2 *
+                                                 cell_size, cell_size))
+                pygame.draw.rect(screen, LIGHT_BLUE,
+                                 (x_start, y_start, 2 * cell_size, cell_size),
+                                 1)
+                pygame.draw.line(screen, LIGHT_BLUE,
+                                 (x_start + cell_size, y_start),
+                                 (x_start + cell_size, y_start + cell_size))
+                self.put_static_label(
+                    Label(str(self.field_params.nums_of_ships[i] - drawn_ships[i]),
+                          (x_start + cell_size, y_start)))
+                y_start += cell_size
+
 
     def show_menu(self, menu_buttons):
         for btn in menu_buttons:
@@ -323,10 +367,15 @@ class DrawManager:
             pygame.draw.rect(screen, WHITE, (btn.x_start, btn.y_start,
                                              btn.width, btn.height))
             for i in range(2):
-                pygame.draw.line(screen, LIGHT_BLUE, (btn.x_start, btn.y_start + i * cell_size), (btn.x_start + btn_width, btn.y_start + i * cell_size))
+                pygame.draw.line(screen, LIGHT_BLUE,
+                                 (btn.x_start, btn.y_start + i * cell_size),
+                                 (btn.x_start + btn_width, btn.y_start + i *
+                                  cell_size))
             for i in range(btn.width // cell_size):
-                pygame.draw.line(screen, LIGHT_BLUE, (btn.x_start + i * cell_size, btn.y_start), (btn.x_start + i * cell_size, btn.y_start + btn.height))
-
+                pygame.draw.line(screen, LIGHT_BLUE,
+                                 (btn.x_start + i * cell_size, btn.y_start),
+                                 (btn.x_start + i * cell_size, btn.y_start +
+                                  btn.height))
 
     # рисует сетку на фоне
     @staticmethod
@@ -494,23 +543,27 @@ class DrawManager:
     # рисует корабли, участвующие в игре, в окне создания поля
     def draw_ships_in_game(self):
         x_start = cell_size
-        y_start = cell_size
+        y_start = 4 * cell_size
+        ships_length = []
         for i in range(len(self.field_params.nums_of_ships)):
             if self.field_params.nums_of_ships[i] != 0:
-                for j in range(i + 2):
-                    pygame.draw.line(screen, BLUE,
-                                     (x_start, y_start + j * cell_size),
-                                     (x_start + cell_size,
-                                      y_start + j * cell_size), 2)
-
-                pygame.draw.line(screen, BLUE, (x_start, y_start),
-                                 (x_start, y_start + j * cell_size), 2)
+                ships_length.append(i + 1)
+        for i in ships_length:
+            for j in range(i + 1):
                 pygame.draw.line(screen, BLUE,
-                                 (x_start + cell_size, y_start),
-                                 (
-                                 x_start + cell_size, y_start + j * cell_size),
-                                 2)
-                x_start += 2 * cell_size
+                                 (x_start, y_start + j * cell_size),
+                                 (x_start + cell_size,
+                                  y_start + j * cell_size), 2)
+
+            pygame.draw.line(screen, BLUE, (x_start, y_start),
+                             (x_start, y_start + j * cell_size), 2)
+            pygame.draw.line(screen, BLUE,
+                             (x_start + cell_size, y_start),
+                             (
+                             x_start + cell_size, y_start + j * cell_size),
+                             2)
+            x_start += 2 * cell_size
+
 
     # рисует один корабль по заданным координатам, повороту
     # (горизонательно, вертикально). вызывается из метода

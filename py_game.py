@@ -341,7 +341,19 @@ class Game:
     def change_to_create_field(self, player, go_back=False):
         self.uiManager.create_window.clear_labels()
         self.uiManager.create_window.add_labels(
-            ui.Label(self.labels[player], (22 * ui.cell_size, ui.cell_size)))
+            ui.Label(self.labels[player], (22 * ui.cell_size, ui.cell_size)),
+            ui.Label('Доступные корабли', (7 * ui.cell_size, 3 * ui.cell_size)),
+        ui.Label('Размер', (5 * ui.cell_size, 4 * ui.cell_size)),
+        ui.Label('Количество', (9 * ui.cell_size, 4 * ui.cell_size)))
+        x_start = 5 * ui.cell_size
+        y_start = 5 * ui.cell_size
+        for i in range(len(self.uiManager.field_params.nums_of_ships)):
+            if self.uiManager.field_params.nums_of_ships[i] != 0:
+                self.uiManager.create_window.add_labels(
+                    ui.Label('{0}'.format(i + 1), (x_start, y_start)))
+
+                y_start += ui.cell_size
+
         if go_back:
             self.uiManager.go_back()
         else:
@@ -485,18 +497,7 @@ class Game:
             elif plus_btn.sound_rect.collidepoint(mouse):
                 self.change_param(i, 1)
 
-    # обновляет окно с настройками, после того, как меняется рзамер поля
-    def update_settings_window(self):
-        self.uiManager.set_plus_minus_buttons_params()
-        self.uiManager.settings_window.clear_buttons()
-        self.uiManager.settings_window.add_buttons(
-            self.uiManager.plus_size_btn, self.uiManager.back_btn,
-            self.uiManager.minus_size_btn, self.uiManager.next_btn)
-        for button in self.uiManager.plus_minus_buttons:
-            self.uiManager.settings_window.add_buttons(button)
-        self.uiManager.next_window(0)
-        self.uiManager.drawer.draw_ship_examples()
-        self.uiManager.drawer.put_params_labels()
+
 
     # проверяет верны ли введеные в настйроках параметры
     def are_params_correct(self):
@@ -530,14 +531,14 @@ class Game:
 
     def change_size(self, delta):
         self.uiManager.field_params.field_size += delta
-        self.update_settings_window()
+        self.uiManager.update_settings_window()
         self.delete_extra_ships()
 
     # метод для окна с настройками
     def setup_field(self):
         global offset_for_field
         if not self.field_set_up:
-            self.update_settings_window()
+            self.uiManager.update_settings_window()
         while not self.field_set_up:
             mouse = pygame.mouse.get_pos()
             for event in pygame.event.get():
@@ -586,12 +587,12 @@ class Game:
             pygame.display.update()
 
     # перерисовывает поле, удаляет с него все корабли
-    def redraw_field(self, num):
-        self.uiManager.drawer.show_window(self.uiManager.create_window)
+    def clear_field(self, num):
+        self.uiManager.next_window(0)
         self.players[num].field.set_cells_state()
         self.players[num].field.ships = dict()
         self.ships_to_draw = []
-        self.drawn_ships = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.drawn_ships = [0 for i in range(15)]
         self.field_made = False
         self.ships_created = False
 
@@ -637,6 +638,7 @@ class Game:
                     len(temp_ship) - 1]:
             self.players[player].field.add_ship(temp_ship)
             self.drawn_ships[len(temp_ship) - 1] += 1
+            print(self.drawn_ships)
             self.ships_to_draw.append(temp_ship)
 
     # метод для окна с созданием поля
@@ -646,7 +648,7 @@ class Game:
         x_start, y_start = 0, 0
         ship_size = 0, 0
         start_cell, end_cell = (), ()
-        self.redraw_field(player)
+        self.clear_field(player)
         # создаем и заполняем список с номерами кораблей, которых нет в игре
         ships_stop_list = []
         for n in range(len(
@@ -691,15 +693,16 @@ class Game:
                     # если мы уже порисовали, то поле отчищается
                     if can_draw:
                         can_draw = False
-                        self.redraw_field(player)
+                        self.clear_field(player)
                     # и генерируется новое
                     self.players[player].field.generate_ships(
                         self.uiManager.drawer, self.uiManager)
+                    self.uiManager.drawer.update_ships_in_game(self.uiManager.field_params.nums_of_ships)
                     self.ships_created = True
                 # если нажата кнопка 'стереть всё', поле отчищается
                 elif event.type == pygame.MOUSEBUTTONDOWN \
                         and self.uiManager.clear_btn.sound_rect.collidepoint(mouse):
-                    self.redraw_field(player)
+                    self.clear_field(player)
                 # если нажата кнопка 'отмена', стирается последний
                 # нарисованный корабль
                 elif event.type == pygame.MOUSEBUTTONDOWN \
@@ -713,7 +716,7 @@ class Game:
                 elif event.type == pygame.MOUSEBUTTONDOWN and \
                         self.uiManager.manual_btn.sound_rect.collidepoint(mouse):
                     can_draw = True
-                    self.redraw_field(player)
+                    self.clear_field(player)
                 # далее процесс рисования
                 # отмечаем куда мы нажали мышкой, то есть начало корабля
                 elif event.type == pygame.MOUSEBUTTONDOWN and can_draw:
@@ -744,6 +747,7 @@ class Game:
                 pygame.draw.rect(ui.screen, ui.BLACK,
                                  ((x_start, y_start), ship_size), 3)
                 for ship in self.ships_to_draw:
+                    self.uiManager.drawer.update_ships_in_game(self.drawn_ships)
                     if len(ship) > 1 and ship[0][1] == ship[1][1]:
                         self.uiManager.drawer.draw_ship(ship, 0)
                     else:
