@@ -27,12 +27,12 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption('Морской бой')
 
 font_size = 15
-font = pygame.font.Font('Azov.ttf', font_size)
+font = pygame.font.Font('fonts/Azov.ttf', font_size)
 
-pygame.mixer.music.load('morskoj-priboj.ogg')
-sound_missed = pygame.mixer.Sound('splash.ogg')
-sound_wounded = pygame.mixer.Sound('shot.ogg')
-sound_killed = pygame.mixer.Sound('killed-shot.ogg')
+pygame.mixer.music.load('audio/morskoj-priboj.ogg')
+sound_missed = pygame.mixer.Sound('audio/splash.ogg')
+sound_wounded = pygame.mixer.Sound('audio/shot.ogg')
+sound_killed = pygame.mixer.Sound('audio/killed-shot.ogg')
 
 
 class FieldParams:
@@ -88,7 +88,7 @@ class Window:
         self.fixed_labels = []
         self.changing_labels = []
         self.changing_buttons = []
-        self.sound_button = ImageButton('sound.png')
+        self.sound_button = ImageButton('pictures/sound.png')
 
     def add_fixed_buttons(self, *buttons):
         self.fixed_buttons = [button for button in buttons]
@@ -229,7 +229,7 @@ class UIManager:
         self.start_window.add_fixed_labels(Label(
             'Морской бой', (screen_width // 2 - 1.5 * cell_size,
                             3 * cell_size), label_font=pygame.font.Font(
-                'Azov.ttf', 30)))
+                'fonts/Azov.ttf', 30)))
 
         self.levels_window.add_fixed_buttons(
             self.level_1_btn, self.level_2_btn, self.level_3_btn,
@@ -276,7 +276,7 @@ class UIManager:
             sound_missed.set_volume(0)
             sound_wounded.set_volume(0)
             sound_killed.set_volume(0)
-            self.sound_btn = ImageButton('crossed_sound.png')
+            self.sound_btn = ImageButton('pictures/crossed_sound.png')
         else:
             self.sound_on = True
             pygame.mixer.music.set_volume(0.3)
@@ -284,7 +284,7 @@ class UIManager:
             sound_missed.set_volume(0.8)
             sound_wounded.set_volume(2)
             sound_killed.set_volume(1.3)
-            self.sound_btn = ImageButton('sound.png')
+            self.sound_btn = ImageButton('pictures/sound.png')
         pygame.draw.rect(screen, WHITE, (cell_size, cell_size, 2 * cell_size, 2 * cell_size))
         for i in range(2):
             pygame.draw.line(screen, SKY_BLUE, (cell_size, cell_size + i * cell_size), (3 * cell_size, cell_size + i * cell_size))
