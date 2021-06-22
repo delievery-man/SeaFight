@@ -572,7 +572,7 @@ class DrawManager:
         y = cell_size * (ship[0][
                              1] - 1) + top_margin + \
             self.field_params.offset * cell_size
-        if turn == 1:
+        if turn == 0:
             width = cell_size
             height = cell_size * len(ship)
         else:

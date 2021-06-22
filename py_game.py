@@ -27,67 +27,70 @@ class Field:
                 self.cells_state[(x, y)] = True
 
     # метод генерации кораблей.
-    def generate_ships(self, drawer, uiManager):
+    def generate_ships(self, uiManager):
+        self.uiManager = uiManager
         self.field_size = uiManager.field_params.field_size
         self.nums_of_ships = uiManager.field_params.nums_of_ships
         self.ships = {}
         self.set_cells_state()
         self.ships_to_draw = []
-        drawer.show_window(uiManager.create_window)
+        self.available = []
+        self.uiManager.next_window(0)
 
-        while len(self.ships_to_draw) < \
-                uiManager.field_params.total_amount_of_ships:
-            for i in range(len(self.nums_of_ships) - 1, -1, -1):
-                self.generate_ships_by_length(self.nums_of_ships[i], i + 1)
+        self.generation()
+
         for ship in self.ships_to_draw:
-            drawer.draw_ship(ship[0], ship[1])
+            self.uiManager.drawer.draw_ship(ship[0], ship[1])
 
-    # генерирует корабли заданной длины. вызывается из предыдущего методы
-    def generate_ships_by_length(self, number_of_ships, length):
-        s = 0
-        tries = 0
-        while s < number_of_ships:
-            x = random.randint(1, self.field_size)
-            y = random.randint(1, self.field_size)
-            turn = random.randint(0, 1)
-            ship = self.make_ship(x, y, turn, length)
-            if self.is_ship_can_be_put(ship):
-                tries = 0
-                self.add_ship(ship)
-                self.ships_to_draw.append((ship, turn))
-                s += 1
-            else:
-                tries += 1
-            if tries == 10:
-                self.ships = {}
-                self.set_cells_state()
-                self.ships_to_draw = []
-                break
+    def generation(self):
+        start_again = False
+        while len(self.ships_to_draw) < \
+                self.uiManager.field_params.total_amount_of_ships:
+            self.update_available()
+            for i in range(len(self.nums_of_ships) - 1, -1, -1):
+                s = 0
+                while s < self.nums_of_ships[i]:
+                    if len(self.available) == 0:
+                        start_again = True
+                        break
+                    (x, y) = random.choice(self.available)
+                    horizontal = bool(random.randint(0, 1))
+                    if horizontal:
+                        possible_ships = [
+                            [(x + z, y) for z in range(j, i + 1 + j)] for j in
+                            range(0, -(i + 1), -1)]
+                    else:
+                        possible_ships = [
+                            [(x, y + z) for z in range(j, i + 1 + j)] for j in
+                            range(0, -(i + 1), -1)]
+                    for ship in possible_ships:
+                        if self.can_be_put(ship):
+                            self.add_ship(ship, int(horizontal))
+                            s += 1
+                            break
+                if start_again:
+                    start_again = False
+                    self.ships = {}
+                    self.set_cells_state()
+                    self.ships_to_draw = []
+                    self.available = []
+                    self.uiManager.next_window(0)
+                    break
 
-    # создает сам корабль - список таплов с координатами на поле
-    def make_ship(self, x, y, turn, length):
-        if turn == 0:
-            if x == self.field_size or x == self.field_size - 1:
-                return [(self.field_size - i, y) for i in
-                        range(length - 1, -1, -1)]
-            else:
-                return [(i, y) for i in range(1, length + 1)]
-        else:
-            if y == self.field_size or y == self.field_size - 1:
-                return [(x, self.field_size - i) for i in
-                        range(length - 1, -1, -1)]
-            else:
-                return [(x, i) for i in range(1, length + 1)]
+    def update_available(self):
+        self.available = []
+        for key in self.cells_state.keys():
+            if self.cells_state[key]:
+                self.available.append(key)
 
-    # возвращает True, если корабль возможно поставить на поле
-    def is_ship_can_be_put(self, ship):
-        for cell in ship:
-            if self.cells_state[cell] is False:
+    def can_be_put(self, ship):
+        for (x, y) in ship:
+            if (x, y) not in self.available:
                 return False
         return True
 
     # добавляет корабль в словарь кораблей
-    def add_ship(self, ship):
+    def add_ship(self, ship, turn):
         for cell in ship:
             x = cell[0]
             y = cell[1]
@@ -98,8 +101,9 @@ class Field:
                 neighbours.append(n)
             self.disable_cells(x, y)
             self.ships[(x, y)] = (False, neighbours)
+        self.ships_to_draw.append((ship, turn))
+        self.update_available()
 
-    # удаляет корабль
     def remove_ship(self, ship):
         for cell in ship:
             x = cell[0]
@@ -113,7 +117,6 @@ class Field:
                     continue
                 self.cells_state[c] = True
 
-    # делает клетки вокруг клетки (x, y) недоступными
     def disable_cells(self, x, y):
         cells_around = [(x + i, y + j) for i in range(-1, 2) for j in
                         range(-1, 2)]
@@ -122,6 +125,7 @@ class Field:
                     cell[1] > self.field_size:
                 continue
             self.cells_state[cell] = False
+
 
 
 class Player:
@@ -656,8 +660,7 @@ class Game:
 
                     if player == 1:
                         if GAME_WITH_BOT:
-                            self.players[2].field.generate_ships(
-                                self.uiManager.drawer, self.uiManager)
+                            self.players[2].field.generate_ships(self.uiManager)
                             self.change_to_play_game(delta=2)
                         else:
                             self.change_to_create_field(2)
@@ -682,8 +685,7 @@ class Game:
                         can_draw = False
                         self.clear_field(player)
                     # и генерируется новое
-                    self.players[player].field.generate_ships(
-                        self.uiManager.drawer, self.uiManager)
+                    self.players[player].field.generate_ships(self.uiManager)
                     self.uiManager.drawer.update_ships_in_game(self.uiManager.field_params.nums_of_ships)
                     self.ships_created = True
                 # если нажата кнопка 'стереть всё', поле отчищается
