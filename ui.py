@@ -6,6 +6,8 @@ RED = (255, 0, 0)
 LIGHT_BLUE = (65, 105, 225)
 BLUE = (0, 0, 139)
 BUTTON_BLUE = (70,130,180)
+SKY_BLUE = (193, 227, 255)
+DARK_BLUE = (21, 63, 101)
 cell_size = 30
 left_margin = 60
 top_margin = 90
@@ -71,7 +73,7 @@ class ImageButton(Button):
 
 
 class Label:
-    def __init__(self, text, params, color=BUTTON_BLUE):
+    def __init__(self, text, params, color=DARK_BLUE):
         self.text = font.render(text, True, color)
         self.width, self.height = font.size(text)
         self.x_start, self.y_start = params[0], params[1]
@@ -104,6 +106,9 @@ class Window:
 
     def clear_buttons(self):
         self.changing_buttons = []
+
+    def clear_labels(self):
+        self.changing_labels = []
 
 class UIManager:
     # тут создаются и хранятся все кнопки и окна. лейблы как переменные не
@@ -316,7 +321,7 @@ class DrawManager:
     # отображает окно
     def show_window(self, window):
         screen.fill(WHITE)
-        self.draw_grid(LIGHT_BLUE)
+        self.draw_grid(SKY_BLUE)
         screen.blit(window.sound_button.image, window.sound_button.rect)
         for button in window.fixed_buttons:
             self.draw_button(button)
@@ -340,10 +345,10 @@ class DrawManager:
             if self.field_params.nums_of_ships[i] != 0:
                 pygame.draw.rect(screen, WHITE, (x_start, y_start, 2 *
                                                  cell_size, cell_size))
-                pygame.draw.rect(screen, LIGHT_BLUE,
+                pygame.draw.rect(screen, SKY_BLUE,
                                  (x_start, y_start, 2 * cell_size, cell_size),
                                  1)
-                pygame.draw.line(screen, LIGHT_BLUE,
+                pygame.draw.line(screen, SKY_BLUE,
                                  (x_start + cell_size, y_start),
                                  (x_start + cell_size, y_start + cell_size))
                 self.put_static_label(Label(str(self.field_params.nums_of_ships[i]),
@@ -357,10 +362,10 @@ class DrawManager:
             if self.field_params.nums_of_ships[i] != 0:
                 pygame.draw.rect(screen, WHITE, (x_start, y_start, 2 *
                                                  cell_size, cell_size))
-                pygame.draw.rect(screen, LIGHT_BLUE,
+                pygame.draw.rect(screen, SKY_BLUE,
                                  (x_start, y_start, 2 * cell_size, cell_size),
                                  1)
-                pygame.draw.line(screen, LIGHT_BLUE,
+                pygame.draw.line(screen, SKY_BLUE,
                                  (x_start + cell_size, y_start),
                                  (x_start + cell_size, y_start + cell_size))
                 self.put_static_label(
@@ -453,26 +458,26 @@ class DrawManager:
     def update_param(self, ship_num, x_start, y_start):
         pygame.draw.rect(screen, WHITE, (x_start, y_start, 2 *
                                          cell_size, cell_size))
-        pygame.draw.rect(screen, LIGHT_BLUE,
+        pygame.draw.rect(screen, SKY_BLUE,
                          (x_start, y_start, 2 * cell_size, cell_size),
                          1)
-        pygame.draw.line(screen, LIGHT_BLUE,
+        pygame.draw.line(screen, SKY_BLUE,
                          (x_start + cell_size, y_start),
                          (x_start + cell_size, y_start + cell_size))
         if ship_num == -1:
             self.put_static_label(Label(str(self.field_params.field_size),
-                                        (x_start + cell_size, y_start), BLUE))
+                                        (x_start + cell_size, y_start), DARK_BLUE))
         else:
             self.put_static_label(Label(str(self.field_params.nums_of_ships[ship_num]),
                                         (x_start + cell_size, y_start),
-                                        BLUE))
+                                        DARK_BLUE))
 
     def update_turn(self, player_label, enemy_label, change=True):
         if change:
             self.x_player, self.x_enemy = self.x_enemy, self.x_player
             self.y_player, self.y_enemy = self.y_enemy, self.y_player
         self.put_dynamic_label(Label(enemy_label, (self.x_player, self.y_player), WHITE))
-        self.put_dynamic_label(Label(player_label, (self.x_enemy, self.y_enemy), BUTTON_BLUE), WHITE)
+        self.put_dynamic_label(Label(player_label, (self.x_enemy, self.y_enemy), DARK_BLUE), WHITE)
 
     def last_move(self, fired_cell, damage, player_num):
         letters = [chr(i) for i in
@@ -498,13 +503,13 @@ class DrawManager:
         for x in range(2):
             for i in range(start, end):
                 for j in range(i + 1):
-                    pygame.draw.line(screen, BLUE,
+                    pygame.draw.line(screen, DARK_BLUE,
                                      (x_start + j * cell_size, y_start),
                                      (x_start + j * cell_size,
                                       y_start + cell_size), 2)
-                pygame.draw.line(screen, BLUE, (x_start, y_start),
+                pygame.draw.line(screen, DARK_BLUE, (x_start, y_start),
                                  (x_start + j * cell_size, y_start), 2)
-                pygame.draw.line(screen, BLUE, (x_start, y_start +
+                pygame.draw.line(screen, DARK_BLUE, (x_start, y_start +
                                                 cell_size),
                                  (
                                  x_start + j * cell_size, y_start + cell_size),
@@ -525,19 +530,19 @@ class DrawManager:
                           cell_size, self.field_params.field_size * cell_size))
         for i in range(self.field_params.field_size + 1):
             # горизонтальные линии
-            pygame.draw.line(screen, BLUE,
+            pygame.draw.line(screen, DARK_BLUE,
                              (x_start, y_start + i * cell_size),
                              (x_start + self.field_params.field_size *
                               cell_size, y_start + i * cell_size), 2)
             # вертикальные линии
-            pygame.draw.line(screen, BLUE,
+            pygame.draw.line(screen, DARK_BLUE,
                              (x_start + i * cell_size, y_start),
                              (x_start + i * cell_size, y_start +
                               self.field_params.field_size * cell_size), 2)
 
             if i < self.field_params.field_size:
-                num = font.render(str(i + 1), True, BLUE)
-                let = font.render(letters[i], True, BLUE)
+                num = font.render(str(i + 1), True, DARK_BLUE)
+                let = font.render(letters[i], True, DARK_BLUE)
 
                 num_width = num.get_width()
                 num_height = num.get_height()
@@ -550,31 +555,6 @@ class DrawManager:
                 screen.blit(let, (x_start + i * cell_size +
                                   (cell_size // 2 - let_width // 2),
                                   y_start - num_height * 1.5))
-
-    # рисует корабли, участвующие в игре, в окне создания поля
-    def draw_ships_in_game(self):
-        x_start = cell_size
-        y_start = 4 * cell_size
-        ships_length = []
-        for i in range(len(self.field_params.nums_of_ships)):
-            if self.field_params.nums_of_ships[i] != 0:
-                ships_length.append(i + 1)
-        for i in ships_length:
-            for j in range(i + 1):
-                pygame.draw.line(screen, BLUE,
-                                 (x_start, y_start + j * cell_size),
-                                 (x_start + cell_size,
-                                  y_start + j * cell_size), 2)
-
-            pygame.draw.line(screen, BLUE, (x_start, y_start),
-                             (x_start, y_start + j * cell_size), 2)
-            pygame.draw.line(screen, BLUE,
-                             (x_start + cell_size, y_start),
-                             (
-                             x_start + cell_size, y_start + j * cell_size),
-                             2)
-            x_start += 2 * cell_size
-
 
     # рисует один корабль по заданным координатам, повороту
     # (горизонательно, вертикально). вызывается из метода
@@ -608,14 +588,14 @@ class DrawManager:
                 continue
             x_d = x - 0.5 + offset + self.field_params.offset
             y_d = y + self.field_params.offset
-            pygame.draw.circle(screen, BLUE,
+            pygame.draw.circle(screen, DARK_BLUE,
                                (cell_size * x_d,
                                 cell_size * (y_d - 0.5) + top_margin),
                                cell_size // 6)
 
     # рисует крестики
     @staticmethod
-    def put_cross(x_start, y_start, color=BLUE):
+    def put_cross(x_start, y_start, color=DARK_BLUE):
         pygame.draw.line(screen, color, (x_start, y_start),
                          (x_start + cell_size, y_start + cell_size),
                          cell_size // 10)

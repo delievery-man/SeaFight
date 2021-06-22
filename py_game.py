@@ -339,6 +339,8 @@ class Game:
         self.setup_field()
 
     def change_to_create_field(self, player, go_back=False):
+        self.uiManager.create_window.clear_labels()
+        self.uiManager.create_window.add_changing_labels(ui.Label(self.labels[player], (22 * ui.cell_size, ui.cell_size)))
         self.uiManager.set_ships_in_game()
         if go_back:
             self.uiManager.go_back()
@@ -346,9 +348,11 @@ class Game:
             self.uiManager.next_window()
         self.field_made = False
         self.ships_created = False
+        print(self.enemy_num, self.player_num)
         self.create_field(player)
 
     def change_to_play_game(self, go_back=False, delta=1):
+        print(self.enemy_num, self.player_num)
         if go_back:
             self.uiManager.go_back(delta)
         else:
@@ -810,7 +814,7 @@ class Game:
                     ui.Label('Игрок {0} победил'.format(winner),
                              (ui.screen_width / 2, 2 * ui.cell_size)),
                     ui.Label(
-                        'со счётом: {0} очков'.format(
+                        'со счётом: {0}'.format(
                             self.players[winner].score),
                         (ui.screen_width / 2, 4 * ui.cell_size)))
         self.change_to_finish()
@@ -859,6 +863,7 @@ class Game:
     def play(self):
         self.uiManager.drawer.update_score(0, 1)
         self.uiManager.drawer.update_score(0, 2)
+        print(self.enemy_num, self.player_num)
         self.uiManager.drawer.update_turn(self.labels[self.enemy_num],
                                           self.labels[self.player_num], False)
 
@@ -901,6 +906,7 @@ class Game:
                         self.win()
                     elif self.uiManager.main_nenu_btn.sound_rect.collidepoint(mouse):
                         self.game_over = True
+                        self.player_num, self.enemy_num = self.enemy_num, self.player_num
                         self.change_to_choose_mode(True, 5)
 
             pygame.display.update()
