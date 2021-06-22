@@ -12,6 +12,8 @@ offset_for_field = 0
 
 class Field:
     def __init__(self, field_params):
+        self.taken = []
+        self.available = []
         self.field_size = field_params.field_size
         self.nums_of_ships = field_params.nums_of_ships
         # индекс + 1 - длина корабля, значение - количество таких кораблей
@@ -31,10 +33,12 @@ class Field:
         self.uiManager = uiManager
         self.field_size = uiManager.field_params.field_size
         self.nums_of_ships = uiManager.field_params.nums_of_ships
+
         self.ships = {}
         self.set_cells_state()
         self.ships_to_draw = []
-        self.available = []
+        self.update_available()
+
         self.uiManager.next_window(0)
 
         self.generation()
@@ -46,34 +50,36 @@ class Field:
         start_again = False
         while len(self.ships_to_draw) < \
                 self.uiManager.field_params.total_amount_of_ships:
-            self.update_available()
             for i in range(len(self.nums_of_ships) - 1, -1, -1):
                 s = 0
                 while s < self.nums_of_ships[i]:
-                    if len(self.available) == 0:
+                    if len(self.available) == 0 or \
+                            len(self.taken) == len(self.available):
                         start_again = True
                         break
                     (x, y) = random.choice(self.available)
-                    horizontal = bool(random.randint(0, 1))
-                    if horizontal:
-                        possible_ships = [
-                            [(x + z, y) for z in range(j, i + 1 + j)] for j in
-                            range(0, -(i + 1), -1)]
-                    else:
-                        possible_ships = [
-                            [(x, y + z) for z in range(j, i + 1 + j)] for j in
-                            range(0, -(i + 1), -1)]
-                    for ship in possible_ships:
-                        if self.can_be_put(ship):
-                            self.add_ship(ship, int(horizontal))
-                            s += 1
-                            break
+                    if (x, y) not in self.taken:
+                        self.taken.append((x, y))
+                        horizontal = bool(random.randint(0, 1))
+                        if horizontal:
+                            possible_ships = [
+                                [(x + z, y) for z in range(j, i + 1 + j)] for j in
+                                range(0, -(i + 1), -1)]
+                        else:
+                            possible_ships = [
+                                [(x, y + z) for z in range(j, i + 1 + j)] for j in
+                                range(0, -(i + 1), -1)]
+                        for ship in possible_ships:
+                            if self.is_ship_can_be_put(ship):
+                                self.add_ship(ship, int(horizontal))
+                                s += 1
+                                break
                 if start_again:
                     start_again = False
                     self.ships = {}
                     self.set_cells_state()
                     self.ships_to_draw = []
-                    self.available = []
+                    self.update_available()
                     self.uiManager.next_window(0)
                     break
 
@@ -83,9 +89,10 @@ class Field:
             if self.cells_state[key]:
                 self.available.append(key)
 
-    def can_be_put(self, ship):
-        for (x, y) in ship:
-            if (x, y) not in self.available:
+    def is_ship_can_be_put(self, ship):
+        for cell in ship:
+            if cell not in self.cells_state.keys() or \
+                    not self.cells_state[cell]:
                 return False
         return True
 
@@ -102,7 +109,7 @@ class Field:
             self.disable_cells(x, y)
             self.ships[(x, y)] = (False, neighbours)
         self.ships_to_draw.append((ship, turn))
-        self.update_available()
+        self.taken = []
 
     def remove_ship(self, ship):
         for cell in ship:
@@ -125,6 +132,8 @@ class Field:
                     cell[1] > self.field_size:
                 continue
             self.cells_state[cell] = False
+            if cell in self.available:
+                self.available.remove(cell)
 
 
 
@@ -507,10 +516,17 @@ class Game:
     # возвращает True, если корабли не влезают на поле. Иначе - False
     def too_many_ships(self):
         total = 0
+        field_size = self.uiManager.field_params.field_size
         for i in range(len(self.uiManager.field_params.nums_of_ships)):
-            total += self.uiManager.field_params.nums_of_ships[i] * (i + 1)
+            ship_length = i + 1
+            ship_amount = self.uiManager.field_params.nums_of_ships[i]
+            if ship_length == field_size:
+                total += ship_length * 2 * ship_amount
+            else:
+                total += (ship_length * 2 + 2) * ship_amount
+        print(total)
         return total > (self.uiManager.field_params.field_size *
-                self.uiManager.field_params.field_size) / 2
+                self.uiManager.field_params.field_size)
 
     # если мы уменьшили размер поля, но не уменьшили количество кораблей,
     # длина которых больше длины поля, вызывается этот метод, и слишком длинные
@@ -605,6 +621,7 @@ class Game:
     def check_borders(self, start_cell, end_cell, ships_stop_list, temp_ship,
                       player):
         # проверяем, что не зашли за границы поля
+        turn = 0
         size = self.uiManager.field_params.field_size
         if 1 <= start_cell[0] <= size and 1 <= start_cell[1] <= size \
                 and 1 <= end_cell[0] <= size and 1 <= end_cell[1] <= size:
@@ -615,22 +632,27 @@ class Game:
                 return
             else:
                 if start_cell[0] == end_cell[0]:
+                    turn = 0
                     for cell in range(start_cell[1],
                                       end_cell[1] + 1):
                         temp_ship.append((start_cell[0], cell))
+
                 elif start_cell[1] == end_cell[1]:
+                    turn = 1
                     for cell in range(start_cell[0],
                                       end_cell[0] + 1):
                         temp_ship.append((cell, start_cell[1]))
+
+
         if temp_ship and \
                 self.players[player].field.is_ship_can_be_put(
                     temp_ship) and \
                 self.drawn_ships[len(temp_ship) - 1] < \
                 self.uiManager.field_params.nums_of_ships[
                     len(temp_ship) - 1]:
-            self.players[player].field.add_ship(temp_ship)
+            self.players[player].field.add_ship(temp_ship, turn)
             self.drawn_ships[len(temp_ship) - 1] += 1
-            self.ships_to_draw.append(temp_ship)
+            self.ships_to_draw.append((temp_ship, turn))
 
     # метод для окна с созданием поля
     def create_field(self, player):
@@ -735,12 +757,9 @@ class Game:
                 self.uiManager.drawer.show_window(self.uiManager.create_window)
                 pygame.draw.rect(ui.screen, ui.BUTTON_BLUE,
                                  ((x_start, y_start), ship_size), 3)
-                for ship in self.ships_to_draw:
+                for ship, turn in self.ships_to_draw:
                     self.uiManager.drawer.update_ships_in_game(self.drawn_ships)
-                    if len(ship) > 1 and ship[0][1] == ship[1][1]:
-                        self.uiManager.drawer.draw_ship(ship, 0)
-                    else:
-                        self.uiManager.drawer.draw_ship(ship, 1)
+                    self.uiManager.drawer.draw_ship(ship, turn)
             pygame.display.update()
 
     # передается ход
