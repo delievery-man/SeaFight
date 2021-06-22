@@ -396,17 +396,17 @@ class DrawManager:
     @staticmethod
     def hide_menu(menu_buttons):
         for btn in menu_buttons:
-            pygame.draw.rect(screen, WHITE, (btn.x_start, btn.y_start,
-                                             btn.width, btn.height))
+            pygame.draw.rect(screen, WHITE, (btn.x_start - 0.5 * cell_size, btn.y_start,
+                                             btn.width + cell_size, btn.height))
             for i in range(2):
-                pygame.draw.line(screen, LIGHT_BLUE,
-                                 (btn.x_start, btn.y_start + i * cell_size),
-                                 (btn.x_start + btn_width, btn.y_start + i *
+                pygame.draw.line(screen, SKY_BLUE,
+                                 (btn.x_start - 0.5 * cell_size, btn.y_start + i * cell_size),
+                                 (btn.x_start + btn_width + cell_size, btn.y_start + i *
                                   cell_size))
-            for i in range(btn.width // cell_size):
-                pygame.draw.line(screen, LIGHT_BLUE,
-                                 (btn.x_start + i * cell_size, btn.y_start),
-                                 (btn.x_start + i * cell_size, btn.y_start +
+            for i in range(btn.width // cell_size + 1):
+                pygame.draw.line(screen, SKY_BLUE,
+                                 (btn.x_start + (i - 0.5) * cell_size, btn.y_start),
+                                 (btn.x_start + (i - 0.5) * cell_size, btn.y_start +
                                   btn.height))
 
     # рисует сетку на фоне
