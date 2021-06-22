@@ -110,6 +110,7 @@ class Window:
     def clear_labels(self):
         self.changing_labels = []
 
+
 class UIManager:
     # тут создаются и хранятся все кнопки и окна. лейблы как переменные не
     # хранятся.
@@ -283,8 +284,8 @@ class UIManager:
             self.sound_btn = ImageButton('sound.png')
         pygame.draw.rect(screen, WHITE, (cell_size, cell_size, 2 * cell_size, 2 * cell_size))
         for i in range(2):
-            pygame.draw.line(screen, LIGHT_BLUE, (cell_size, cell_size + i * cell_size), (3 * cell_size, cell_size + i * cell_size))
-            pygame.draw.line(screen, LIGHT_BLUE, (cell_size + i * cell_size, cell_size), (cell_size + i * cell_size, 3 * cell_size))
+            pygame.draw.line(screen, SKY_BLUE, (cell_size, cell_size + i * cell_size), (3 * cell_size, cell_size + i * cell_size))
+            pygame.draw.line(screen, SKY_BLUE, (cell_size + i * cell_size, cell_size), (cell_size + i * cell_size, 3 * cell_size))
         screen.blit(self.sound_btn.image, self.sound_btn.rect)
         for window in self.windows_order.values():
             window.sound_button = self.sound_btn
@@ -373,7 +374,6 @@ class DrawManager:
                           (x_start + cell_size, y_start)))
                 y_start += cell_size
 
-
     def show_menu(self, menu_buttons):
         for btn in menu_buttons:
             self.draw_button(btn)
@@ -412,7 +412,7 @@ class DrawManager:
         pygame.draw.rect(screen, color, (x_start, y_start, width, height))
         screen.blit(font.render(button.title, True, WHITE),
                     title_params)
-        button.sound_rect = pygame.Rect((x_start, y_start, width, height))
+        button.rect = pygame.Rect((x_start, y_start, width, height))
 
     # просто пишет текст
     @staticmethod
@@ -514,6 +514,7 @@ class DrawManager:
                                  (
                                  x_start + j * cell_size, y_start + cell_size),
                                  2)
+                self.put_static_label(Label(str(i), (x_start + 0.5 * cell_size, y_start)))
                 y_start += 2 * cell_size
 
             start, end = middle + 1, self.field_params.field_size + 1
