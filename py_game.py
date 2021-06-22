@@ -565,6 +565,10 @@ class Game:
                             self.field_set_up = True
                             self.uiManager.field_params.update_params()
                             for p in self.players.values():
+                                p.field.field_size = \
+                                    self.uiManager.field_params.field_size
+                                p.field.nums_of_ships = \
+                                    self.uiManager.field_params.field_size
                                 p.field.set_cells_state()
                             self.uiManager.drawer = DrawManager(
                                 self.uiManager.field_params)
@@ -728,6 +732,7 @@ class Game:
                         self.uiManager.manual_btn.rect.collidepoint(mouse):
                     can_draw = True
                     self.clear_field(player)
+
                 # далее процесс рисования
                 # отмечаем куда мы нажали мышкой, то есть начало корабля
                 elif event.type == pygame.MOUSEBUTTONDOWN and can_draw:
