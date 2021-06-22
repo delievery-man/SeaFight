@@ -361,11 +361,9 @@ class Game:
             self.uiManager.next_window()
         self.field_made = False
         self.ships_created = False
-        print(self.enemy_num, self.player_num)
         self.create_field(player)
 
     def change_to_play_game(self, go_back=False, delta=1):
-        print(self.enemy_num, self.player_num)
         if go_back:
             self.uiManager.go_back(delta)
         else:
@@ -524,7 +522,6 @@ class Game:
                 total += ship_length * 2 * ship_amount
             else:
                 total += (ship_length * 2 + 2) * ship_amount
-        print(total)
         return total > (self.uiManager.field_params.field_size *
                 self.uiManager.field_params.field_size)
 
@@ -883,7 +880,6 @@ class Game:
     def play(self):
         self.uiManager.drawer.update_score(0, 1)
         self.uiManager.drawer.update_score(0, 2)
-        print(self.enemy_num, self.player_num)
         self.uiManager.drawer.update_turn(self.labels[self.enemy_num],
                                           self.labels[self.player_num], False)
 
