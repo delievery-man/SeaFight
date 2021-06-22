@@ -108,7 +108,8 @@ class Field:
         self.ships_to_draw.append((ship, turn))
         self.taken = []
 
-    def remove_ship(self, ship):
+    def remove_ship(self, last_ship):
+        ship = last_ship[0]
         for cell in ship:
             x = cell[0]
             y = cell[1]
