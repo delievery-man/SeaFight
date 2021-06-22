@@ -5,7 +5,7 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 LIGHT_BLUE = (65, 105, 225)
 BLUE = (0, 0, 139)
-BUTTON_BLUE = (70,130,180)
+BUTTON_BLUE = (70, 130, 180)
 SKY_BLUE = (193, 227, 255)
 DARK_BLUE = (21, 63, 101)
 cell_size = 30
@@ -18,7 +18,7 @@ btn_width, btn_height = 210, 60
 OFFSETS = {1: 3,
            2: 26}
 
-middle_offset = (screen_width - 15 * cell_size) / 2 / cell_size # отступ для
+middle_offset = (screen_width - 15 * cell_size) / 2 / cell_size  # отступ для
 # рисования поля посередине
 
 pygame.init()
@@ -65,11 +65,14 @@ class Button:
 
 class ImageButton(Button):
     def __init__(self, image):
-        super().__init__('', (cell_size, cell_size), 2 * cell_size, 2 * cell_size)
+        super().__init__('', (cell_size, cell_size), 2 * cell_size,
+                         2 * cell_size)
         self.image = pygame.image.load(image)
-        self.image = pygame.transform.scale(self.image, (2 * cell_size, 2 * cell_size))
+        self.image = pygame.transform.scale(self.image, (2 * cell_size,
+                                                         2 * cell_size))
         self.image.set_colorkey(WHITE)
-        self.rect = pygame.Rect(cell_size, cell_size, 2 * cell_size, 2 * cell_size)
+        self.rect = pygame.Rect(cell_size, cell_size, 2 * cell_size,
+                                2 * cell_size)
 
 
 class Label:
@@ -115,6 +118,7 @@ class UIManager:
     # тут создаются и хранятся все кнопки и окна. лейблы как переменные не
     # хранятся.
     def __init__(self):
+        self.sound_btn = ImageButton('pictures/sound.png')
         self.plus_minus_buttons = []
         self.win_window = Window()
         self.game_window = Window()
@@ -188,11 +192,11 @@ class UIManager:
         self.continue_btn = Button(
             'Продолжить', ((screen_width - btn_width) / 2, y_start))
         self.restart_btn = Button(
-            'Начать заново', ((screen_width - btn_width) / 2, y_start + btn_height +
-                        cell_size))
+            'Начать заново', ((screen_width - btn_width) / 2, y_start +
+                              btn_height + cell_size))
         self.surrender_btn = Button(
-            'Сдаться', ((screen_width - btn_width) / 2, y_start + 2 * btn_height +
-                        2 * cell_size))
+            'Сдаться', ((screen_width - btn_width) / 2, y_start + 2 *
+                        btn_height + 2 * cell_size))
         self.main_nenu_btn = Button(
             'Выйти в главное меню', ((screen_width - btn_width) / 2,
                                      y_start + 3 * btn_height + 3 * cell_size))
@@ -285,10 +289,15 @@ class UIManager:
             sound_wounded.set_volume(2)
             sound_killed.set_volume(1.3)
             self.sound_btn = ImageButton('pictures/sound.png')
-        pygame.draw.rect(screen, WHITE, (cell_size, cell_size, 2 * cell_size, 2 * cell_size))
+        pygame.draw.rect(screen, WHITE, (cell_size, cell_size, 2 * cell_size,
+                                         2 * cell_size))
         for i in range(2):
-            pygame.draw.line(screen, SKY_BLUE, (cell_size, cell_size + i * cell_size), (3 * cell_size, cell_size + i * cell_size))
-            pygame.draw.line(screen, SKY_BLUE, (cell_size + i * cell_size, cell_size), (cell_size + i * cell_size, 3 * cell_size))
+            pygame.draw.line(screen, SKY_BLUE,
+                             (cell_size, cell_size + i * cell_size),
+                             (3 * cell_size, cell_size + i * cell_size))
+            pygame.draw.line(screen, SKY_BLUE,
+                             (cell_size + i * cell_size, cell_size),
+                             (cell_size + i * cell_size, 3 * cell_size))
         screen.blit(self.sound_btn.image, self.sound_btn.rect)
         for window in self.windows_order.values():
             window.sound_button = self.sound_btn
@@ -317,10 +326,12 @@ class UIManager:
 class DrawManager:
     def __init__(self, field_params):
         self.field_params = field_params
-        self.x_player, self.y_player = (OFFSETS[1] + self.field_params.field_size / 2
-                              + self.field_params.offset) * cell_size, cell_size
-        self.x_enemy, self.y_enemy = (OFFSETS[2] + self.field_params.field_size / 2
-                            + self.field_params.offset) * cell_size, cell_size
+        self.x_player, self.y_player = \
+            (OFFSETS[1] + self.field_params.field_size / 2 +
+             self.field_params.offset) * cell_size, cell_size
+        self.x_enemy, self.y_enemy = \
+            (OFFSETS[2] + self.field_params.field_size / 2 +
+             self.field_params.offset) * cell_size, cell_size
 
     # отображает окно
     def show_window(self, window):
@@ -355,8 +366,9 @@ class DrawManager:
                 pygame.draw.line(screen, SKY_BLUE,
                                  (x_start + cell_size, y_start),
                                  (x_start + cell_size, y_start + cell_size))
-                self.put_static_label(Label(str(self.field_params.nums_of_ships[i]),
-                                            (x_start + cell_size, y_start)))
+                self.put_static_label(Label(str(
+                    self.field_params.nums_of_ships[i]),
+                    (x_start + cell_size, y_start)))
                 y_start += cell_size
 
     def update_ships_in_game(self, drawn_ships):
@@ -373,15 +385,16 @@ class DrawManager:
                                  (x_start + cell_size, y_start),
                                  (x_start + cell_size, y_start + cell_size))
                 self.put_static_label(
-                    Label(str(self.field_params.nums_of_ships[i] - drawn_ships[i]),
-                          (x_start + cell_size, y_start)))
+                    Label(str(self.field_params.nums_of_ships[i] -
+                              drawn_ships[i]), (x_start + cell_size, y_start)))
                 y_start += cell_size
 
     def show_menu(self, menu_buttons):
         for btn in menu_buttons:
             self.draw_button(btn)
 
-    def hide_menu(self, menu_buttons):
+    @staticmethod
+    def hide_menu(menu_buttons):
         for btn in menu_buttons:
             pygame.draw.rect(screen, WHITE, (btn.x_start, btn.y_start,
                                              btn.width, btn.height))
@@ -426,10 +439,10 @@ class DrawManager:
     # для надписей которые меняются во время игры (сообщения об ошибках, очки,
     # промазал/убил/ранил).
     def put_dynamic_label(self, label, color=BUTTON_BLUE):
-        pygame.draw.rect(screen, color, (label.x_start - label.width / 2
-                                               - cell_size, label.y_start,
-                                               label.width + 2 * cell_size,
-                                               cell_size))
+        pygame.draw.rect(screen, color, (label.x_start - label.width / 2 -
+                                         cell_size, label.y_start,
+                                         label.width + 2 * cell_size,
+                                         cell_size))
         self.put_static_label(label)
 
     def put_error_message(self, message):
@@ -469,9 +482,11 @@ class DrawManager:
                          (x_start + cell_size, y_start + cell_size))
         if ship_num == -1:
             self.put_static_label(Label(str(self.field_params.field_size),
-                                        (x_start + cell_size, y_start), DARK_BLUE))
+                                        (x_start + cell_size, y_start),
+                                        DARK_BLUE))
         else:
-            self.put_static_label(Label(str(self.field_params.nums_of_ships[ship_num]),
+            self.put_static_label(Label(str(self.field_params.nums_of_ships
+                                            [ship_num]),
                                         (x_start + cell_size, y_start),
                                         DARK_BLUE))
 
@@ -479,8 +494,11 @@ class DrawManager:
         if change:
             self.x_player, self.x_enemy = self.x_enemy, self.x_player
             self.y_player, self.y_enemy = self.y_enemy, self.y_player
-        self.put_dynamic_label(Label(enemy_label, (self.x_player, self.y_player), WHITE))
-        self.put_dynamic_label(Label(player_label, (self.x_enemy, self.y_enemy), DARK_BLUE), WHITE)
+        self.put_dynamic_label(Label(enemy_label,
+                                     (self.x_player, self.y_player), WHITE))
+        self.put_dynamic_label(Label(player_label,
+                                     (self.x_enemy, self.y_enemy), DARK_BLUE),
+                               WHITE)
 
     def last_move(self, fired_cell, damage, player_num):
         letters = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К', 'Л', 'М',
@@ -505,6 +523,7 @@ class DrawManager:
         start, end = 1, middle + 1
         for x in range(2):
             for i in range(start, end):
+                j = 0
                 for j in range(i + 1):
                     pygame.draw.line(screen, DARK_BLUE,
                                      (x_start + j * cell_size, y_start),
@@ -512,12 +531,12 @@ class DrawManager:
                                       y_start + cell_size), 2)
                 pygame.draw.line(screen, DARK_BLUE, (x_start, y_start),
                                  (x_start + j * cell_size, y_start), 2)
-                pygame.draw.line(screen, DARK_BLUE, (x_start, y_start +
-                                                cell_size),
-                                 (
-                                 x_start + j * cell_size, y_start + cell_size),
-                                 2)
-                self.put_static_label(Label(str(i), (x_start + 0.5 * cell_size, y_start)))
+                pygame.draw.line(screen, DARK_BLUE,
+                                 (x_start, y_start + cell_size),
+                                 (x_start + j * cell_size, y_start +
+                                  cell_size), 2)
+                self.put_static_label(Label(str(i), (x_start + 0.5 * cell_size,
+                                                     y_start)))
                 y_start += 2 * cell_size
 
             start, end = middle + 1, self.field_params.field_size + 1
@@ -584,12 +603,17 @@ class DrawManager:
 
     # обновляет лейб с очками
     def update_score(self, score, player_num):
-        self.put_dynamic_label(Label('Очки: {0}'.format(score), ((OFFSETS[player_num] + self.field_params.field_size / 2 + self.field_params.offset) * cell_size, screen_height - 2 * cell_size), WHITE))
+        self.put_dynamic_label(Label('Очки: {0}'.format(score),
+                                     ((OFFSETS[player_num] +
+                                       self.field_params.field_size / 2 +
+                                       self.field_params.offset) * cell_size,
+                                      screen_height - 2 * cell_size), WHITE))
 
     # рисует кружочки
     def put_dots(self, dots, offset):
         for (x, y) in dots:
-            if x < 1 or y < 1 or x > self.field_params.field_size or y > self.field_params.field_size:
+            if x < 1 or y < 1 or x > self.field_params.field_size or \
+                    y > self.field_params.field_size:
                 continue
             x_d = x - 0.5 + offset + self.field_params.offset
             y_d = y + self.field_params.offset
@@ -606,15 +630,3 @@ class DrawManager:
                          cell_size // 10)
         pygame.draw.line(screen, color, (x_start, y_start + cell_size),
                          (x_start + cell_size, y_start), cell_size // 10)
-
-
-
-
-
-
-
-
-
-
-
-

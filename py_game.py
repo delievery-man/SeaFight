@@ -3,11 +3,7 @@ import random
 import ui
 from ui import UIManager, DrawManager
 
-
 GAME_WITH_BOT = False
-middle_offset = (ui.screen_width - 15 * ui.cell_size) / 2 / ui.cell_size
-# отступ для рисования поля и кораблей посередине
-offset_for_field = 0
 
 
 class Field:
@@ -29,10 +25,10 @@ class Field:
                 self.cells_state[(x, y)] = True
 
     # метод генерации кораблей.
-    def generate_ships(self, uiManager):
-        self.uiManager = uiManager
-        self.field_size = uiManager.field_params.field_size
-        self.nums_of_ships = uiManager.field_params.nums_of_ships
+    def generate_ships(self, ui_manager):
+        self.uiManager = ui_manager
+        self.field_size = ui_manager.field_params.field_size
+        self.nums_of_ships = ui_manager.field_params.nums_of_ships
 
         self.ships = {}
         self.set_cells_state()
@@ -62,13 +58,13 @@ class Field:
                         self.taken.append((x, y))
                         horizontal = bool(random.randint(0, 1))
                         if horizontal:
-                            possible_ships = [
-                                [(x + z, y) for z in range(j, i + 1 + j)] for j in
-                                range(0, -(i + 1), -1)]
+                            possible_ships = [[(x + z, y) for z in
+                                               range(j, i + 1 + j)] for j in
+                                              range(0, -(i + 1), -1)]
                         else:
-                            possible_ships = [
-                                [(x, y + z) for z in range(j, i + 1 + j)] for j in
-                                range(0, -(i + 1), -1)]
+                            possible_ships = [[(x, y + z) for z in
+                                               range(j, i + 1 + j)] for j in
+                                              range(0, -(i + 1), -1)]
                         for ship in possible_ships:
                             if self.is_ship_can_be_put(ship):
                                 self.add_ship(ship, int(horizontal))
@@ -128,7 +124,7 @@ class Field:
         cells_around = [(x + i, y + j) for i in range(-1, 2) for j in
                         range(-1, 2)]
         for cell in cells_around:
-            if cell[0] < 1 or cell[0] > self.field_size or cell[1] < 1 or\
+            if cell[0] < 1 or cell[0] > self.field_size or cell[1] < 1 or \
                     cell[1] > self.field_size:
                 continue
             self.cells_state[cell] = False
@@ -136,14 +132,14 @@ class Field:
                 self.available.remove(cell)
 
 
-
 class Player:
-    def __init__(self, uiManager):
-        self.uiManager = uiManager
+    def __init__(self, ui_manager):
+        self.uiManager = ui_manager
         self.field = Field(self.uiManager.field_params)
         self.score = 0
 
     def do_shot(self, event, offset):
+        offset_for_field = self.uiManager.field_params.offset
         x, y = event.pos
         if (offset + offset_for_field) * \
                 ui.cell_size <= x <= \
@@ -195,10 +191,8 @@ class Bot:
             crd = self.last_good_shot
             crd_rec = [[crd[0] - 1, crd[1]], [crd[0] + 1, crd[1]],
                        [crd[0], crd[1] - 1], [crd[0], crd[1] + 1]]
-            crd_rec = filter(lambda x: 1 <= x[0] <=
-                                       enemy.field.field_size and
-                                       1 <= x[1] <= enemy.field.field_size,
-                             crd_rec)
+            crd_rec = filter(lambda x: 1 <= x[0] <= enemy.field.field_size and
+                             1 <= x[1] <= enemy.field.field_size, crd_rec)
             crd_rec = filter(lambda x: (x[0], x[1]) in available, crd_rec)
             self.recommendation.extend(crd_rec)
             if len(self.recommendation) == 0:
@@ -213,34 +207,38 @@ class Bot:
 
         return target
 
-    def do_shot_level_1(self, enemy):
+    @staticmethod
+    def do_shot_level_1(enemy):
         available = []
         for key in enemy.field.cells_state.keys():
             if enemy.field.cells_state[key]:
                 available.append(key)
         return random.choice(available)
 
-    def do_shot_level_3(self, enemy):
+    @staticmethod
+    def do_shot_level_3(enemy):
         available = []
-        if(len(available)==0):
+        if len(available) == 0:
             for key in enemy.field.ships.keys():
                 if enemy.field.cells_state[key]:
                     available.append(key)
-        return random.choice(available)if random.randint(0, 1) == 0 else random.choice(list(enemy.field.cells_state.keys()))
+        return random.choice(available) if random.randint(0, 1) == 0 else \
+            random.choice(list(enemy.field.cells_state.keys()))
 
 
 class ShootingManager:
-    def __init__(self, player_num, player, drawer):
+    def __init__(self, player_num, player, ui_manager):
         self.player = player
         self.__offset = ui.OFFSETS[player_num]
-        self.drawer = drawer
+        self.uiManager = ui_manager
+        self.drawer = self.uiManager.drawer
 
     def missed(self, x, y):
         self.drawer.put_dots([(x, y)], self.__offset)
         self.player.field.cells_state[(x, y)] = False
 
     def wounded(self, x, y):
-        global offset_for_field
+        offset_for_field = self.uiManager.field_params.offset
         self.drawer.put_cross(ui.cell_size * (x - 1 + self.__offset +
                                               offset_for_field),
                               ui.cell_size * (y - 1 + offset_for_field) +
@@ -266,7 +264,7 @@ class ShootingManager:
         return False
 
     def killed(self, x, y):
-        global offset_for_field
+        offset_for_field = self.uiManager.field_params.offset
         self.drawer.put_cross(ui.cell_size * (x - 1 + self.__offset +
                                               offset_for_field), ui.cell_size *
                               (y - 1 + offset_for_field) +
@@ -276,7 +274,8 @@ class ShootingManager:
         for neighbour in neighbours:
             self.drawer.put_cross(ui.cell_size * (neighbour[0] - 1
                                                   + self.__offset +
-                                                  offset_for_field), ui.cell_size *
+                                                  offset_for_field),
+                                  ui.cell_size *
                                   (neighbour[1] - 1 + offset_for_field) +
                                   ui.top_margin, ui.RED)
             self.player.field.cells_state[neighbour] = False
@@ -311,7 +310,6 @@ class Game:
         self.game_over = False
         self.game_finished = False
         self.game_paused = False
-        # self.quit_menu = False
 
         self.uiManager = UIManager()
         self.labels = {}
@@ -321,7 +319,7 @@ class Game:
         self.enemy_num = 2
         self.player_num = 1
         self.ships_to_draw = []
-        self.drawn_ships = [0 for i in range(15)]
+        self.drawn_ships = [0 for _ in range(15)]
         self.scene_number = 0
 
     def play_game(self):
@@ -353,7 +351,8 @@ class Game:
 
     def change_to_create_field(self, player, go_back=False):
         self.uiManager.create_window.clear_labels()
-        self.uiManager.create_window.add_changing_labels(ui.Label(self.labels[player], (22 * ui.cell_size, ui.cell_size)))
+        self.uiManager.create_window.add_changing_labels(
+            ui.Label(self.labels[player], (22 * ui.cell_size, ui.cell_size)))
         self.uiManager.set_ships_in_game()
         if go_back:
             self.uiManager.go_back()
@@ -409,9 +408,9 @@ class Game:
     # создается словарь с шутинг менеджерами
     def set_shootings(self):
         self.shootings = {1: ShootingManager(1, self.players[1],
-                                             self.uiManager.drawer),
+                                             self.uiManager),
                           2: ShootingManager(2, self.players[2],
-                                             self.uiManager.drawer)}
+                                             self.uiManager)}
 
     def set_mode(self, bot):
         global GAME_WITH_BOT
@@ -433,10 +432,10 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.uiManager.start_with_friend_btn.rect.\
+                    if self.uiManager.start_with_friend_btn.rect. \
                             collidepoint(mouse):
                         self.set_mode(False)
-                    elif self.uiManager.start_with_computer_btn.rect.\
+                    elif self.uiManager.start_with_computer_btn.rect. \
                             collidepoint(mouse):
                         self.set_mode(True)
                     elif self.uiManager.sound_btn.rect.collidepoint(mouse):
@@ -523,7 +522,7 @@ class Game:
             else:
                 total += (ship_length * 2 + 2) * ship_amount
         return total > (self.uiManager.field_params.field_size *
-                self.uiManager.field_params.field_size)
+                        self.uiManager.field_params.field_size)
 
     # если мы уменьшили размер поля, но не уменьшили количество кораблей,
     # длина которых больше длины поля, вызывается этот метод, и слишком длинные
@@ -541,7 +540,6 @@ class Game:
 
     # метод для окна с настройками
     def setup_field(self):
-        global offset_for_field
         if not self.field_set_up:
             self.uiManager.update_settings_window()
         while not self.field_set_up:
@@ -555,7 +553,7 @@ class Game:
                             and self.uiManager.field_params.field_size < 15:
                         self.change_size(1)
                     # уменьшаем размер поля
-                    elif self.uiManager.minus_size_btn.rect.\
+                    elif self.uiManager.minus_size_btn.rect. \
                             collidepoint(mouse) \
                             and self.uiManager.field_params.field_size > 2:
                         self.change_size(-1)
@@ -567,8 +565,6 @@ class Game:
                             self.uiManager.field_params.update_params()
                             self.uiManager.drawer = DrawManager(
                                 self.uiManager.field_params)
-                            offset_for_field = self.uiManager.field_params.\
-                                offset
                             self.change_to_create_field(1)
                         # если не верны, то выводим сообщение о
                         # соответствующей ошибке
@@ -597,12 +593,13 @@ class Game:
         self.players[num].field.set_cells_state()
         self.players[num].field.ships = dict()
         self.ships_to_draw = []
-        self.drawn_ships = [0 for i in range(15)]
+        self.drawn_ships = [0 for _ in range(15)]
         self.field_made = False
         self.ships_created = False
 
-    @staticmethod
-    def set_start_end_cells(x_end, x_start, y_start, y_end):
+    def set_start_end_cells(self, x_end, x_start, y_start, y_end):
+        offset_for_field = self.uiManager.field_params.offset
+        middle_offset = ui.middle_offset
         start_cell = (int(x_start / ui.cell_size
                           + 1 - offset_for_field - middle_offset),
                       int((y_start - ui.top_margin) / ui.cell_size
@@ -640,7 +637,6 @@ class Game:
                                       end_cell[0] + 1):
                         temp_ship.append((cell, start_cell[1]))
 
-
         if temp_ship and \
                 self.players[player].field.is_ship_can_be_put(
                     temp_ship) and \
@@ -657,7 +653,6 @@ class Game:
         drawing = False
         x_start, y_start = 0, 0
         ship_size = 0, 0
-        start_cell, end_cell = (), ()
         self.clear_field(player)
         # создаем и заполняем список с номерами кораблей, которых нет в игре
         ships_stop_list = []
@@ -676,20 +671,24 @@ class Game:
                         and self.uiManager.next_btn.rect.collidepoint(mouse) \
                         and self.ships_created:
                     self.field_made = True
-
                     if player == 1:
                         if GAME_WITH_BOT:
-                            self.players[2].field.generate_ships(self.uiManager)
+                            self.players[2].field.generate_ships(
+                                self.uiManager)
                             self.change_to_play_game(delta=2)
                         else:
                             self.change_to_create_field(2)
                     else:
                         self.change_to_play_game()
 
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.sound_btn.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        self.uiManager.sound_btn.rect.collidepoint(
+                        mouse):
                     self.uiManager.change_sound_volume()
 
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.back_btn.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        self.uiManager.back_btn.rect.collidepoint(
+                        mouse):
                     self.field_made = True
                     if player == 2:
                         self.change_to_create_field(1, True)
@@ -705,7 +704,8 @@ class Game:
                         self.clear_field(player)
                     # и генерируется новое
                     self.players[player].field.generate_ships(self.uiManager)
-                    self.uiManager.drawer.update_ships_in_game(self.uiManager.field_params.nums_of_ships)
+                    self.uiManager.drawer.update_ships_in_game(
+                        self.uiManager.field_params.nums_of_ships)
                     self.ships_created = True
                 # если нажата кнопка 'стереть всё', поле отчищается
                 elif event.type == pygame.MOUSEBUTTONDOWN \
@@ -714,7 +714,7 @@ class Game:
                 # если нажата кнопка 'отмена', стирается последний
                 # нарисованный корабль
                 elif event.type == pygame.MOUSEBUTTONDOWN \
-                        and self.uiManager.cancel_btn.rect.collidepoint(mouse) \
+                        and self.uiManager.cancel_btn.rect.collidepoint(mouse)\
                         and can_draw:
                     if self.ships_to_draw:
                         last_ship = self.ships_to_draw.pop()
@@ -740,13 +740,18 @@ class Game:
                     x_end, y_end = event.pos
                     ship_size = 0, 0
                     drawing = False
-                    start_cell, end_cell = self.set_start_end_cells(x_end, x_start, y_start, y_end)
+                    start_cell, end_cell = self.set_start_end_cells(x_end,
+                                                                    x_start,
+                                                                    y_start,
+                                                                    y_end)
                     temp_ship = []
                     # проверяем, что не зашли за границы поля
-                    self.check_borders(start_cell, end_cell, ships_stop_list, temp_ship, player)
+                    self.check_borders(start_cell, end_cell, ships_stop_list,
+                                       temp_ship, player)
 
                 # проверяем что нарисовали уже все корабли
-                if len(self.ships_to_draw) == self.uiManager.field_params.total_amount_of_ships:
+                if len(self.ships_to_draw) == self.uiManager.field_params.\
+                        total_amount_of_ships:
                     self.ships_created = True
             # если поле еще не создано и мы в процессе рисования, отрисовываем
             # нарисованные корабли
@@ -755,7 +760,8 @@ class Game:
                 pygame.draw.rect(ui.screen, ui.BUTTON_BLUE,
                                  ((x_start, y_start), ship_size), 3)
                 for ship, turn in self.ships_to_draw:
-                    self.uiManager.drawer.update_ships_in_game(self.drawn_ships)
+                    self.uiManager.drawer.update_ships_in_game(
+                        self.drawn_ships)
                     self.uiManager.drawer.draw_ship(ship, turn)
             pygame.display.update()
 
@@ -788,7 +794,7 @@ class Game:
         ui.sound_killed.play()
 
         self.uiManager.drawer.last_move(fired_cell, 'убил', self.player_num)
-        # self.uiManager.drawer.put_dynamic_label(ui.Label(
+        # self.ui_manager.drawer.put_dynamic_label(ui.Label(
         #     'Убил', (22 * ui.cell_size,
         #              17 * ui.cell_size), ui.WHITE))
 
@@ -811,9 +817,9 @@ class Game:
                 ui.Label('Ничья', (ui.screen_width / 2, 2 * ui.cell_size)))
         else:
             score_label = ui.Label(
-                            'со счётом: {0}'.format(
-                                self.players[winner].score),
-                            (ui.screen_width / 2, 4 * ui.cell_size))
+                'со счётом: {0}'.format(
+                    self.players[winner].score),
+                (ui.screen_width / 2, 4 * ui.cell_size))
 
             if GAME_WITH_BOT:
                 if winner == 1:
@@ -844,7 +850,8 @@ class Game:
         self.uiManager.drawer.last_move(fired_cell, 'мимо', self.player_num)
 
     def check_fired_cell(self, fired_cell, enemy):
-        if fired_cell != (0, 0) and fired_cell[0] != self.uiManager.field_params.field_size + 1:
+        if fired_cell != (0, 0) and \
+                fired_cell[0] != self.uiManager.field_params.field_size + 1:
             # если попали в корабль врага и он еще не подбитый
             if fired_cell in enemy.field.ships and \
                     enemy.field.ships[fired_cell][0] is False:
@@ -895,10 +902,14 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN and \
-                        self.uiManager.menu_btn.rect.collidepoint(mouse) and not self.game_paused:
-                    self.uiManager.drawer.show_menu(self.uiManager.menu_buttons)
+                        self.uiManager.menu_btn.rect.collidepoint(
+                            mouse) and not self.game_paused:
+                    self.uiManager.drawer.show_menu(
+                        self.uiManager.menu_buttons)
                     self.game_paused = True
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.sound_btn.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        self.uiManager.sound_btn.rect.collidepoint(
+                        mouse):
                     self.uiManager.change_sound_volume()
                 elif (event.type == pygame.MOUSEBUTTONDOWN or self.bot_turn) \
                         and not self.game_paused:
@@ -911,11 +922,13 @@ class Game:
                     self.check_fired_cell(fired_cell, enemy)
                 elif self.game_paused and event.type == pygame.MOUSEBUTTONDOWN:
                     if self.uiManager.continue_btn.rect.collidepoint(mouse):
-                        self.uiManager.drawer.hide_menu(self.uiManager.menu_buttons)
+                        self.uiManager.drawer.hide_menu(
+                            self.uiManager.menu_buttons)
                         self.game_paused = False
                     elif self.uiManager.restart_btn.rect.collidepoint(mouse):
                         self.game_over = True
-                        self.uiManager.drawer.hide_menu(self.uiManager.menu_buttons)
+                        self.uiManager.drawer.hide_menu(
+                            self.uiManager.menu_buttons)
                         self.change_to_play_game(True, 0)
                     elif self.uiManager.surrender_btn.rect.collidepoint(mouse):
                         self.game_over = True
@@ -935,7 +948,8 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.quit_game()
                 # начинаем заново
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.uiManager.restart_btn.rect.collidepoint(mouse):
+                elif event.type == pygame.MOUSEBUTTONDOWN and \
+                        self.uiManager.restart_btn.rect.collidepoint(mouse):
                     self.game_finished = True
                     game = Game()
                     game.play_game()
