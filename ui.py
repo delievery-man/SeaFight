@@ -13,7 +13,7 @@ left_margin = 60
 top_margin = 90
 screen_width, screen_height = left_margin * 2 + cell_size * 40, \
                               top_margin * 2 + cell_size * 17
-btn_width, btn_height = 180, 60
+btn_width, btn_height = 210, 60
 
 OFFSETS = {1: 3,
            2: 26}
@@ -26,8 +26,8 @@ pygame.init()
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption('Морской бой')
 
-font_size = 24
-font = pygame.font.SysFont('notosans', font_size)
+font_size = 15
+font = pygame.font.Font('Azov.ttf', font_size)
 
 pygame.mixer.music.load('morskoj-priboj.ogg')
 sound_missed = pygame.mixer.Sound('splash.ogg')
@@ -480,8 +480,8 @@ class DrawManager:
         self.put_dynamic_label(Label(player_label, (self.x_enemy, self.y_enemy), DARK_BLUE), WHITE)
 
     def last_move(self, fired_cell, damage, player_num):
-        letters = [chr(i) for i in
-                   range(65, 65 + self.field_params.field_size)]
+        letters = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К', 'Л', 'М',
+                   'Н', 'О', 'П']
         let, num = letters[fired_cell[0] - 1], fired_cell[1]
         self.put_dynamic_label(Label(
             '({0}, {1}) - {2}'.format(let, num, damage),
@@ -523,7 +523,8 @@ class DrawManager:
 
     # рисует поле
     def draw_field(self, offset):
-        letters = [chr(i) for i in range(65, 65 + self.field_params.field_size)]
+        letters = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К', 'Л', 'М',
+                   'Н', 'О', 'П']
         x_start = (offset + self.field_params.offset) * cell_size
         y_start = top_margin + self.field_params.offset * cell_size
         pygame.draw.rect(screen, WHITE,
