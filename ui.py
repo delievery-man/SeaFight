@@ -73,8 +73,8 @@ class ImageButton(Button):
 
 
 class Label:
-    def __init__(self, text, params, color=DARK_BLUE):
-        self.text = font.render(text, True, color)
+    def __init__(self, text, params, color=DARK_BLUE, label_font=font):
+        self.text = label_font.render(text, True, color)
         self.width, self.height = font.size(text)
         self.x_start, self.y_start = params[0], params[1]
 
@@ -169,13 +169,12 @@ class UIManager:
             start, end = middle, size
 
     def create_buttons(self):
+        y_start = (screen_height - 2 * btn_height - cell_size) / 2
         self.start_with_friend_btn = Button(
-            'Играть с другом', ((screen_width - btn_width * 2) / 3,
-                                (screen_height - btn_height) / 2))
+            'Играть с другом', ((screen_width - btn_width) / 2, y_start))
         self.start_with_computer_btn = Button(
-            'Играть с компьютером', ((screen_width - btn_width * 2) * (2 / 3)
-                                     + btn_width, (screen_height - btn_height)
-                                     / 2))
+            'Играть с компьютером', ((screen_width - btn_width) / 2,
+                                     y_start + btn_height + cell_size))
         y_start = (screen_height - 3 * btn_height - 2 * cell_size) / 2
         self.level_1_btn = Button(
             'Лёгкий уровень', ((screen_width - btn_width) / 2, y_start))
@@ -227,6 +226,10 @@ class UIManager:
     def set_windows(self):
         self.start_window.add_fixed_buttons(self.start_with_friend_btn,
                                             self.start_with_computer_btn)
+        self.start_window.add_fixed_labels(Label(
+            'Морской бой', (screen_width // 2 - 1.5 * cell_size,
+                            3 * cell_size), label_font=pygame.font.Font(
+                'Azov.ttf', 30)))
 
         self.levels_window.add_fixed_buttons(
             self.level_1_btn, self.level_2_btn, self.level_3_btn,
