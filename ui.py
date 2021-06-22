@@ -16,7 +16,7 @@ screen_width, screen_height = left_margin * 2 + cell_size * 40, \
 btn_width, btn_height = 210, 60
 
 OFFSETS = {1: 3,
-           2: 26}
+           2: 27}
 
 middle_offset = (screen_width - 15 * cell_size) / 2 / cell_size  # отступ для
 # рисования поля посередине
