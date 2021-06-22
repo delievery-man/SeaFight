@@ -20,6 +20,7 @@ class Field:
 
     # делает все клетки поля пустыми, доступными
     def set_cells_state(self):
+        self.cells_state = dict()
         for x in range(1, self.field_size + 1):
             for y in range(1, self.field_size + 1):
                 self.cells_state[(x, y)] = True
@@ -563,6 +564,8 @@ class Game:
                         if self.are_params_correct():
                             self.field_set_up = True
                             self.uiManager.field_params.update_params()
+                            for p in self.players.values():
+                                p.field.set_cells_state()
                             self.uiManager.drawer = DrawManager(
                                 self.uiManager.field_params)
                             self.change_to_create_field(1)
@@ -794,9 +797,6 @@ class Game:
         ui.sound_killed.play()
 
         self.uiManager.drawer.last_move(fired_cell, 'убил', self.player_num)
-        # self.ui_manager.drawer.put_dynamic_label(ui.Label(
-        #     'Убил', (22 * ui.cell_size,
-        #              17 * ui.cell_size), ui.WHITE))
 
     def wound(self, fired_cell):
         # у бота отмечаем что мы еще не убили корабль полностью
