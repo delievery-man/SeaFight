@@ -726,7 +726,7 @@ class Game:
                         and can_draw:
                     if self.ships_to_draw:
                         last_ship = self.ships_to_draw.pop()
-                        self.drawn_ships[len(last_ship) - 1] -= 1
+                        self.drawn_ships[len(last_ship[0]) - 1] -= 1
                         self.players[player].field.remove_ship(last_ship)
                 # если нажата кнопка 'нарисовать', можем начать рисовать
                 elif event.type == pygame.MOUSEBUTTONDOWN and \
